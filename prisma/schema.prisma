@@ -35,3 +35,14 @@ model Job {
 
   @@map("jobs")
 }
+
+// ─── Tabelas pré-existentes (Supabase) ────────────────────
+
+/// Esta tabela já existia no Supabase (não gerenciada por migrations).
+/// Contains row level security. See: https://pris.ly/d/row-level-security
+model konis_db {
+  id        BigInt                 @id @default(autoincrement())
+  content   String?
+  metadata  Json?
+  embedding Unsupported("vector")?
+}
