@@ -1,10 +1,43 @@
-export default function JobsPage() {
+import { Card, CardHeader, CardBody } from "@/components/ui";
+import { JobsTable } from "@/components/jobs/JobsTable";
+import type { ApiResponse, Job } from "@/lib/types";
+
+/**
+ * Server Component — /jobs
+ *
+ * Busca a lista de jobs pelo route handler e renderiza a tabela.
+ * cache: "no-store" garante dados frescos a cada visita.
+ */
+
+async function fetchJobs(): Promise<Job[]> {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+
+  const res = await fetch(`${baseUrl}/api/jobs?limit=50`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) return [];
+
+  const json: ApiResponse<Job[]> = await res.json();
+  return json.error ? [] : json.data;
+}
+
+export default async function JobsPage() {
+  const jobs = await fetchJobs();
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
-      <h1 className="text-3xl font-bold mb-4">Jobs</h1>
-      <p className="text-zinc-600 dark:text-zinc-400">
-        Lista de jobs — em construção.
-      </p>
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1rem" }}>
+      <Card>
+        <CardHeader>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>Jobs</h1>
+          <p style={{ color: "#6b7280", marginTop: "0.25rem" }}>
+            Acompanhe o status dos seus processamentos.
+          </p>
+        </CardHeader>
+        <CardBody>
+          <JobsTable jobs={jobs} />
+        </CardBody>
+      </Card>
     </main>
   );
 }
