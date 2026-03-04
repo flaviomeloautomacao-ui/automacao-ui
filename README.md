@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Automação de Laudos Técnicos
 
-## Getting Started
+Plataforma de automação de laudos DHA com Next.js (App Router), Supabase (PostgreSQL) e Prisma.
 
-First, run the development server:
+## Pré-requisitos
+
+- Node.js 20+
+- Acesso a um banco PostgreSQL (Supabase)
+
+## Setup Inicial
 
 ```bash
+# 1. Instale dependências
+npm install
+
+# 2. Configure variáveis de ambiente
+# Copie .env.example para .env e preencha DATABASE_URL
+cp .env.example .env
+
+# 3. Gere o Prisma Client
+npm run prisma:generate
+
+# 4. Rode a migration inicial
+npx prisma migrate dev --name init
+
+# 5. Inicie o servidor de desenvolvimento
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Banco de Dados (Prisma + Supabase)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+O projeto usa **Prisma** como ORM sobre um PostgreSQL hospedado no **Supabase**.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Variáveis de Ambiente
 
-## Learn More
+| Variável | Descrição | Prefixo público? |
+|---|---|---|
+| `DATABASE_URL` | Connection string PostgreSQL | **NÃO** |
 
-To learn more about Next.js, take a look at the following resources:
+> A `DATABASE_URL` nunca deve ser exposta ao client. Não use `NEXT_PUBLIC_`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Comandos Prisma
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Gerar Prisma Client após alterar o schema
+npm run prisma:generate
 
-## Deploy on Vercel
+# Criar/aplicar migrations
+npm run prisma:migrate
+# ou com nome específico:
+npx prisma migrate dev --name <nome>
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Abrir Prisma Studio (visualizador do banco)
+npm run prisma:studio
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Push direto sem migration (dev only)
+npm run prisma:push
+```
+
+### Regras de Acesso ao Banco
+
+Prisma **só pode ser usado em contexto server-side**:
+- Server Components
+- Route Handlers (`/app/api`)
+- Server Actions
+
+**Nunca** importe `lib/prisma.ts` em Client Components.
+
+## Desenvolvimento
+
+```bash
+npm run dev      # Inicia dev server
+npm run build    # Build de produção
+npm run lint     # ESLint
+```
+
+## Estrutura de Pastas
+
+```
+app/              → Rotas Next.js (App Router)
+  (public)/       → Rotas públicas
+  api/            → Route Handlers
+components/       → Componentes React
+lib/              → Utilitários e configuração
+  prisma.ts       → Singleton do PrismaClient
+  generated/      → Prisma Client gerado (gitignored)
+prisma/           → Schema e migrations
+docs/             → Documentação e exemplos
+```

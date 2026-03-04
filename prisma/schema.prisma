@@ -1,0 +1,37 @@
+// Prisma Schema — Automação de Laudos Técnicos
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────
+
+enum JobStatus {
+  queued
+  processing
+  done
+  error
+}
+
+// ─── Models ───────────────────────────────────────────────
+
+model Job {
+  id           String    @id @default(uuid()) @db.Uuid
+  filename     String?
+  profile      String    // ex: "dust", "gas", "vapors"
+  status       JobStatus @default(queued)
+  progress     Int?      @default(0) // 0-100
+  errorCode    String?   @map("error_code")
+  errorMessage String?   @map("error_message")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("jobs")
+}

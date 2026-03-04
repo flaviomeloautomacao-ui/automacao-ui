@@ -1,0 +1,649 @@
+﻿;;;;;;;;;;
+;;Projeto:;Bunge SFS ;;;;;;;
+;;Data:;11/11/2025;;;;;;;
+;;Revisão:;000;;;;;;;
+;;;;;;;;;;
+Equipamento;Riscos;Perigo ;Causas Possíveis ;Consequências ;Categoria da Severidade ;Categoria do Risco ;Medidas Preventivas Existentes ;Medidas Preventivas a Implementar ;Observações ;Coluna1
+Moega 1720 (rodoviária);"1-Formação súbita de nuvem de poeira com possível ignição por motor ou faísca eletrostática.
+2-Uso de ar comprimido na limpeza.
+3-Falha no sistema de aspiração de pó.
+4-Acúmulo de carga estática.
+";"1-Formação de nuvem de poeira combustível na moega de recebimento.
+2-Acúmulo de carga estática com possibilidade de geração de faíscas.
+3-Faíscas pelo escapamento dos caminhões.";"1-Procedimento não adequado de limpeza.
+2-Prática operacional insegura.
+3-Falta de sistema de aterramento adequado.
+3-Atrito entre grãos e superfícies metálicas.
+4-Umidade do ar baixa.
+5-Problemas de sincronização incorreta do motor da pá carregadeira/cúmulo de depósitos de carbono no escapamento ou camara de combustão do motor.";Incêndio e explosão;Alta;Médio;"1-Sistema de aspiração na moega.
+2-Uso de flaps nas moegas, para evitar o retorno da poeira.
+3-Istalaçoes Ex para área classificada.";"1-Proibição de uso de ar comprimido para limpeza ou estabelecer regras seguras de uso.
+2-Sistema de aterramento do caminhão com intertravamento com o tombador (o tombador só será acionado quando o caminhão estiver devidamente aterrado.";;
+Moega 1720 (Ferroviária);"1-Formação súbita de nuvem de poeira com possível ignição por motor ou faísca eletrostática.
+2-Uso de ar comprimido na limpeza.
+3-Falha no sistema de aspiração de pó.
+4-Acúmulo de carga estática.
+";"1-Formação de nuvem de poeira combustível na moega de recebimento.
+2-Acúmulo de carga estática com possibilidade de geração de faíscas.";"1-Procedimento não adequado de limpeza.
+2-Prática operacional insegura.
+3-Falta de sistema de aterramento adequado..
+4-Atrito entre grãos e superfície metálicas.
+5-Umidade do ar baixa.";Incêndio e explosão;Alta;Médio;"1-Sistema de aspiração na moega.
+2-Uso de flaps nas moegas, para evitar o retorno da poeira.
+3-Instalações Ex para área classificada.";"1-Proibição de uso de ar comprimido para limpeza ou estabelecer regras seguras de uso.
+2-Sistema de aterramento dos vagões com certificação de funcionamento.";;
+FM1720 ;1-Deflagração no interior do filtro sem alívio, com possível propagação para a moega e outros equipamentos conectados.;"1-Faíscas por origem estática.
+2-Falha nos sistemas de manutenção das gaiolas (soltas).
+3-Perfuração das mangas ou sua impregnação.
+4-Umidade do local (perto do mar) possibilitando que as mangas perda eficiências e fiquem impregnadas.";"1-Sistema de alívio e isolamento não certificado.
+2-Falha no aterramento (continuidade).
+2-Rotina de manutenção.
+";Incêndio e explosão;Alta;Médio;1-Sistema de verificação da pressão interna.;"1-Sistema de alívio de explosão certificado.
+2-Sistema de isolamento mecânico de explosão certificado.";;
+CT 1720 A1 e B1;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+";"1-Iluminação com invólucro Ex de vapor de sódio.
+2-Limpeza por ar comprimido, tornando o túnel classificado para Zona 22.
+3-Superaquecimento dos roletes.
+4-Aparecimento de faíscas por origem estática.";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.";Incêndio e explosão;Alta;Médio;"1-Sensor de velocidade.
+2-Sensor de desalinhamento.
+3-Sensor de embuchamento.";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX do túnel.
+4-Instalar sistema de detecção por cabo linear. 
+5-Verificação sistemática do aterramento (conexão).
+";;
+CT 1720 A2 e B2;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+";"1-Iluminação com invólucro EX de vapor de sódio.
+2-Limpeza por ar comprimido, tornando o túnel classificado para Zona 22.
+3-Presença de ferramentas metálicas no túnel (pás).
+4-Filtro com alívio de explosão caseira.";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+4-Falta de treinamentos para riscos de faíscas mecânicas por utilização de ferramentas metálicas.";Incêndio e explosão;Alta;Médio;"1-Sensor de velocidade.
+2-Sensor de desalinhamento.
+3-Sensor de embuchamento.";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX do túnel.
+3-Substituir ferramentas metálicas por plásticas.
+4-Instalar sistema de detecção por cabo linear. 
+5-Verificação sistemática do aterramento (conexão).";;
+CT 1720 A3 e B3;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+";"1-Iluminação com invólucro EX de vapor de sódio.
+2-Limpeza por ar comprimido, tornando o túnel classificado para Zona 22.
+4-Presença de ferramentas metálicas.
+5-Cirene não EX conforme classificação de área.
+6-Superaquecimento dos roletes.";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+4-Falta de treinamentos para riscos de faíscas mecânicas por utilização de ferramentas metálicas.";Incêndio e explosão;Alta;Médio;"1-Sensor de velocidade.
+2-Sensor de desalinhamento.
+3-Sensor de embuchamento.
+4-Sistema de magnéticos para impedir a entrada de partes metálicas.";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX do túnel.
+3-Substituir ferramentas metálicas por plásticas.
+4-Instalar sistema de detecção por cabo linear. 
+5-Substituir ferramentas metálicas por plástico.
+6-Verificação sistemática do sistema de aterramento.";;
+Filtro FM 1780 A2 ;1-Deflagração no interior do filtro sem alívio, com possível propagação para a moega e outros equipamentos conectados.;"1-Faíscas por origem estática.
+2-Falha nos sistemas de manutenção das gaiolas (soltas).
+3-Perfuração das mangas ou sua impregnação.
+4-Umidade do local (perto do mar) possibilitando que as mangas perda eficiências e fiquem impregnadas.";"1-Sistema de alívio e isolamento não certificado.
+2-Falha no aterramento (continuidade).
+2-Rotina de manutenção.
+";Incêndio e explosão;Alta;Médio;1-Sistema de verificação da pressão interna.;"1-Sistema de alívio de explosão certificado.
+2-Sistema de Isolamento mecânico de explosão certificado.";;
+CT 1720A4 (Armazém AG1780) Tripper (Aberta);1-Defragração para o interior do armazém AG 1780.;"1-Falha no sistema de alinhamento.
+2-Superaquecimento dos roletes.";1-Falha no sensor de detalhamento.;Incêndio e explosão;Alta;Alto;"1-Sensor de desalinhamento.
+2-Sensor de velocidade.";"1-Cabo de detecção linear.
+2-Sensores de vibração (recomendado).
+3-Sensor de temperatura .
+4-Verificação sistemática do sistema de aterramento.";;
+CT 1720B4 (Armazém AG1780) Tripper (aberta);1-Defragração para o interior do armazém AG 1780.;"1-Falha no sistema de alinhamento.
+2-Superaquecimento dos roletes.";1-Falha no sensor de detalhamento. ;Incêndio e explosão;Alta;Médio;"1-Sensor de desalinhamento.
+2-Sensor de velocidade.";"1-Cabo de detecção linear.
+2-Sensores de vibração (recomendado).
+3-Sensor de temperatura .
+4-Sensor de rasco de lona (banda).
+5-Revisão sistemática do aterramento (conexões).";;
+Armazém 1780;1-Defragações internas. ;"1-Falhas por superaquecimento nos roletes  das esteiras transportadoras.
+2-Faícas geradas por contado das lâminas das pás carregadeiras com o piso.
+3-Limpeza com ar comprimido.
+4-Escapes de faíscas do motor pelo escapamentos das pás carregadeiras.";"1-Falta de sistemas eficientes de detecção de aumento de temperaturas de mancais ou roletes.
+2-Falta de sistemas de detecção por cabo linear nas esteiras suspensas.
+3-Material faiscante das pás carregadeiras em contato com o piso..
+4-Problemas de sincronização incorreta do motor da pá carregadeira/acúmulo de depósitos de carbono no escapamento ou camara de combustão do motor.
+
+";Incêndio e explosão;Média;Médio;1-Sistema de iluminação e estrutura elétrica EX.;"1-Instalar cabos de detecção linear nas esteiras suspensas.
+2-instalação de sistemas de detecção de temperatura de mancais.
+3-Substituir o material das lâminas das pás carregadeiras, para matérias ante faiscante como Cobre-Berílio (Be-Cu) ou Bronze-Alumínio (Al-Br).
+";;
+Filtros Pontual-FC 02 ;1-Deixar de operar, causando acúmulo de poeira.;"1-Perfuração nos filtros, causando vazamento pela exaustão.
+2-Impreganação dos filtros pela umidade do grão.";"1-Procedimento de manutenção falhos.
+";Incêndio e explosão;baixa;Médio;"1-Manutenção preventiva.
+2-Moega supressora de poeiras na exaustão.";1-Procedimentos rigorosos de manutenção preventiva.;;
+Filtros Pontual-FC 03;1-Deixar de operar, causando acúmulo de poeira.;"1-Perfuração nos filtros, causando vazamento pela exaustão.
+2-Impreganação dos filtros pela umidade do grão.";"1-Procedimento de manutenção falhos.
+";Incêndio e explosão;baixa;Médio;"1-Manutenção preventiva.
+2-Moega supressora de poeiras na exaustão.";1-Procedimentos rigorosos de manutenção preventiva.;;
+Painel de repetidora e Baterias ;1-Equipamento instalado em zona classificado não conforme (não EX).;1-Ignição em área classificada.;1-Erro de projeto de locação.;Incêndio e explosão;Média;Médio;1-Não existe.;1-Substituir por equipamento EX, ou retirar da área classificada.;;
+CT1780 A1 (Fechada);"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+";"1-Iluminação com invólucro EX de vapor de sódio.
+2-Limpeza por ar comprimido, tornando o túnel classificado para Zona 22.
+4-Presença de ferramentas metálicas.
+5-Cirene não EX conforme classificação de área.
+6-Superaquecimento dos roletes.";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Alto;"1-Sensor de velocidade.
+2-Sensor de desalinhamento.
+3-Sensor de embuchamento.
+4-Sistema de magnéticos para impedir a entrada de partes metálicas.
+5-Sistema de iluminação de emergência EX.";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX do túnel.
+3-Substituir ferramentas metálicas por plásticas.
+4-Instalar sistema de detecção por cabo linear.
+5-Substituir ferramentas metálicas por plástico.
+6-Verificação sistemática do aterramento (conexões).";;
+CT1780 A2 (Fechada);"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+";"1-Iluminação com invólucro EX de vapor de sódio.
+2-Limpeza por ar comprimido, tornando o túnel classificado para Zona 22.
+4-Presença de ferramentas metálicas.
+5-Cirene não EX conforme classificação de área.
+6-Superaquecimento dos roletes.";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Média;Médio;"1-Sensor de velocidade.
+2-Sensor de desalinhamento.
+3-Sensor de embuchamento.
+4-Sistema de magnéticos para impedir a entrada de partes metálicas.
+5-Sistema de iluminação de emergência Ex.";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX do túnel.
+3-Substituir ferramentas metálicas por plásticas.
+4-Instalar sistema de detecção por cabo linear.
+5-Substituir ferramentas metálicas por plástico.
+6-Verificação sistemática do aterramento (conexões).";;
+Filtro Pontual FC01 ;1-Deixar de operar, causando acúmulo de poeira.;"1-Perfuração nos filtros, causando vazamento pela exaustão.
+2-Impreganação dos filtros pela umidade do grão.";"1-Procedimento de manutenção falhos.
+";Incêndio e explosão;baixa;Médio;"1-Manutenção preventiva.
+2-Moega supressora de poeiras na exaustão.";"1-Procedimentos rigorosos de manutenção preventiva.
+";;
+Filtro Pontual FC04;1-Deixar de operar, causando acúmulo de poeira.;"1-Perfuração nos filtros, causando vazamento pela exaustão.
+2-Impreganação dos filtros pela umidade do Grão.";"1-Procedimento de manutenção falhos.
+";Incêndio e explosão;Média;Médio;"1-Manutenção Preventiva.
+2-Moega Supressora de poeiras na exaustão.";"1-Procedimentos rigorosos de manutenção preventiva.
+";;
+CT1780 B1 (Fechada);"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+";"1-Iluminação com invólucro EX de vapor de sódio.
+2-Limpeza por ar comprimido, tornando o túnel classificado para Zona 22.
+3-Filtro com alívio de explosão caseira.
+4-Presença de ferramentas metálicas.
+5-Cirene não EX conforme classificação de área.
+6-Superaquecimento dos roletes.";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Alto;"1-Sensor de velocidade.
+2-Sensor de desalinhamento.
+3-Sensor de embuchamento.
+4-Sistema de magnéticos para impedir a entrada de partes metálicas.
+";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX do túnel.
+3-Substituir ferramentas metálicas por plásticas.
+4-Instalar sistema de detecção por cabo linear.
+5-Substituir ferramentas metálicas por plástico.
+6-Verificação sistemática do aterramento (conexões).";;
+Filtro Pontual FC65;1-Deixar de operar, causando acúmulo de poeira.;"1-Perfuração nos filtros, causando vazamento pela exaustão.
+2-Impreganação dos filtros pela umidade do grão.";"1-Procedimento de manutenção falhos.
+";Incêndio e explosão;baixa;Médio;"1-Manutenção preventiva.
+";"1-Procedimentos rigorosos de manutenção preventiva.
+";;
+Filtro Pontual FC05;1-Deixar de operar, causando acúmulo de poeira.;"1-Perfuração nos filtros, causando vazamento pela exaustão.
+2-Impreganação dos filtros pela umidade do Grão.";"1-Procedimento de manutenção falhos.
+";Incêndio e explosão;baixa;Médio;"1-Manutenção preventiva.
+2-Moega supressora de poeiras na exaustão.";"1-Procedimentos rigorosos de manutenção preventiva.
+";;
+CT1780 C (Aberta);"1-Formação de nuvem de poeira.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+";"1-Iluminação com invólucro EX de vapor de sódio.
+2-Limpeza por ar comprimido, tornando área classificada para Zona 22.
+3-Superaquecimento dos roletes.
+";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.";Incêndio e explosão;Alta;Alto;"1-Sensor de velocidade.
+2-Sensor de desalinhamento.
+3-Sensor de embuchamento.
+ ";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX do túnel.
+3-Substituir ferramentas metálicas por plásticas.
+4-Instalar sistema de detecção por cabo linear.
+5-Substituir ferramentas metálicas por plástico.
+6-Verificação sistemática do aterramento (conexões).";;
+Filtro Pontual FC06;1-Deixar de operar, causando acúmulo de poeira.;"1-Perfuração nos filtros, causando vazamento pela exaustão.
+2-Impreganação dos filtros pela umidade do grão.";"1-Procedimento de manutenção falhos.
+";Incêndio e explosão;baixa;Médio;"1-Manutenção preventiva.
+2-moega supressora de poeiras na exaustão.";"1-Procedimentos rigorosos de manutenção preventiva.
+";;
+Filtro Pontual FC07;1-Deixar de operar, causando acúmulo de poeira.;"1-Perfuração nos filtros, causando vazamento pela exaustão.
+2-Impreganação dos filtros pela umidade do grão.";"1-Procedimento de manutenção falhos.
+";Incêndio e explosão;baixa;Médio;"1-Manutenção Preventiva.
+2-moega Supressora de poeiras na exaustão.";"1-Procedimentos rigorosos de manutenção preventiva.
+";;
+Balança BF 1780;"1-Risco de explosão por trabalhar com grande acúmulo de pó dentro dos seus reservatórios.
+2-Torna a área classificado a sua volta.";"1-Não existem sistemas de proteção contra explosão.
+2-Escapes de pó pelas frestas (vazamentos). ";"1-Não foi contemplada no projeto.
+2-Falha de manutenção.";Explosão;Média para Alta;Médio;1-Manutenção preventiva.;"1-Instalar sistema de detecção por cabo linear, de proteção contra explosão.
+2-Sanar problemas de vazamentos. ";;
+CT 1780 D (Aberta);"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+";"1-Iluminação com invólucro EX de vapor de sódio.
+2-Limpeza por ar comprimido, tornando o túnel classificado para Zona 22.
+3-Filtro com alívio de explosão caseira.
+4-Presença de ferramentas metálicas.
+5-Cirene não EX conforme classificação de área. 
+6-Superaquecimentos dos roletes.";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Médio;"1-Sensor de velocidade.
+2-Sensor de desalinhamento.
+3-Sensor de embuchamento.
+ ";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX.
+3-Instalar sistema de detecção por cabo linear. 
+4-Substituir ferramentas metálicas por plástico.
+5-Revisão sistemática do sistema de aterramento (conexões).";;
+Filtro Pontual FC 08 ;1-Deixar de operar, causando acúmulo de poeira.;"1-Perfuração nos filtros, causando vazamento pela exaustão.
+2-Impreganação dos filtros pela umidade do grão.";"1-Procedimento de manutenção falhos.
+";Incêndio e explosão;baixa;Médio;"1-Manutenção preventiva.
+2-Moega supressora de poeiras na exaustão.";"1-Procedimentos rigorosos de manutenção preventiva.
+";;
+Filtro Pontual Fc 09 ;1-Deixar de operar, causando acúmulo de poeira.;"1-Perfuração nos filtros, causando vazamento pela exaustão.
+2-Impreganação dos filtros pela umidade do grão.";"1-Procedimento de manutenção falhos.
+";Incêndio e explosão;baixa;Médio;"1-Manutenção preventiva.
+2-Moega supressora de poeiras na exaustão.";1-Procedimentos rigorosos de manutenção preventiva.;;
+El 1780 ;Explosão por faíscas mecânicas, elétricas estáticas/manutenções incorretas.;"1-Desalinhamento de banda.
+2-Faíscas estáticas.
+3-Faíscas mecânicas.
+4-Falhas de manutenção.
+5-Falta de sistema de proteção contra explosão certificados, (instalação de painéis caseiros).";"1-Manutenção inadequada.
+2-Não medir a continuidade para garantir o aterramento.
+3-Desalinhamento/embuchamento.
+4-Atualização dos procedimentos de manutenção.
+5-Falha no projeto de sistemas de proteção contra explosão não certificados.
+
+";Incêndio e explosão;Alta;Alto;"1-Sensores de temperatura de mancal.
+2-Sensores de velocidade.
+3-Sensores de subvelocidade.
+4-Sensores de desalinhamento.";"1-Instalar sistema  de alívio no fosso do elevador por abafamento (certificados).
+
+2- isolamento de explosão no carregamento e descarregamento do elevador para evitar a propagação de explosão.";;
+FM 255;1-Deflagração no interior do filtro sem alívio, com possível propagação para a moega e outros equipamentos conectados.;"1-Faíscas por origem estática.
+2-Falha nos sistemas de manutenção das gaiolas (soltas).
+3-Perfuração das mangas ou sua impregnação.
+4-Umidade do local (perto do mar) possibilitando que as mangas perda eficiências e fiquem impregnadas.";"1-Sistema de alívio e isolamento não certificado.
+2-Falha no aterramento (continuidade).
+2-Rotina de manutenção.
+";Incêndio e explosão;Alta;Alto;1-Sistema de verificação da pressão interna.;"1-Sistema de alívio de explosão certificado.
+2-Sistema de Isolamento mecânico de explosão certificado.";;
+CT 1255 C;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+";"1-Iluminação não Ex.
+2-Limpeza por ar comprimido, tornando área classificada para Zona 22.
+3-Superaquecimento dos roletes.
+";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Alto;"1-Sensor de velocidade.
+2-Sensor de desalinhamento.
+3-Sensor de embuchamento.
+ ";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX.
+3-Instalar sistema de detecção por cabo linear. 
+4-Revisão sistemática do sistema de aterramento (conexões).
+5-Instalar sensor de temperatura de mancal.";;
+Filtro Pontual FC 12 ;1-Deixar de operar, causando acúmulo de poeira.;"1-Perfuração nos filtros, causando vazamento pela exaustão.
+2-Impreganação dos filtros pela umidade do grão.";"1-Procedimento de manutenção falhos.
+";Incêndio e explosão;baixa;Médio;"1-Manutenção preventiva.
+2-Moega supressora de poeiras na exaustão.";1-Procedimentos igorosos de manutenção preventiva.;;
+CT 255 B ;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+";"1-Iluminação não Ex.
+2-Limpeza por ar comprimido, tornando área classificada para Zona 22.
+3-Superaquecimento dos roletes.
+";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Alto;"1-Sensor de velocidade.
+2-Sensor de embuchamento.
+ ";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX.
+3-Instalar sistema de detecção por cabo linear. 
+4-Revisão sistemática do sistema de aterramento (conexões).
+5-Instalar sensor de desalinhamento e temperatura de mancal.";;
+CT 255 A;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+3-A correia esta fletindo no meio.
+";"1-Iluminação não Ex.
+2-Limpeza por ar comprimido, tornando área classificada para Zona 22.
+3-Superaquecimento dos roletes.
+4-Como a correia fletiu no meio está com retorno de produto (acúmulo), necessitando de limpeza mais frequente.
+";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Médio;"1-Sensor de velocidade.
+2-Sensor de embuchamento.
+ ";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX.
+3-Instalar sistema de detecção por cabo linear. 
+4-Revisão sistemática do sistema de aterramento (conexões).
+5-Instalar sensor de desalinhamento e temperatura de mancal.
+6-Manutenção para corrigir problema de flexão.";;
+Painel de repetidora e Baterias ;1-Equipamento instalado em Zona classificado não conforme (não EX).;1-Ignicão em área classificada.;1-Erro de projeto de locação.;Incêndio e explosão;Média;Médio;1-Não existe. ;1-Substituir por equipamento EX, ou retirar da área classificada.;;
+EL 1255;1-Explosão por faíscas mecânicas, elétricas estáticas/manutenções incorretas.;"1-Desalinhamento de banda.
+2-Faíscas estáticas.
+3-Faíscas mecânicas.
+4-Falhas de manutenção.
+5-Falta de sistema de proteção contra explosão certificados, (instalação de painéis caseiros).";"1-Manutenção inadequada.
+2-Não medir a continuidade para garantir o aterramento.
+3-Desalinhamento/embuchamento.
+4-Atualização dos procedimentos de manutenção.
+5-Falha no projeto sistemas de proteção contra explosão não certificados.
+
+";Incêndio e explosão;Média;Médio;"1-Sensores de temperatura de mancal.
+2-Sensores de velocidade.
+3-Sensores de subvelocidade.
+4-Sensores de desalinhamento.";"1-Instalar sistema  de alívio no fosso do elevador por abafamento (certificados).
+2-Instalar sistema de alívio de explosão na parte externa do elevador.
+3-Instalar sistema de isolamento de explosão no carregamento e descarregamento do elevador para evitar a propagação de explosão.";;
+EL 020 B;Explosão por faíscas mecânicas, elétricas estáticas/manutenções incorretas.;"1-Desalinhamento de banda.
+2-Faíscas estáticas.
+3-Faíscas mecânicas.
+4-Falhas de manutenção.
+5-Falta de sistema de proteção contra explosão certificados, (instalação de painéis caseiros).";"1-Manutenção inadequada.
+2-Não medir a continuidade para garantir o aterramento.
+3-Desalinhamento/embuchamento.
+4-Atualização dos procedimentos de manutenção.
+5-Falha no projeto sistemas de proteção contra explosão não certificados.
+
+";Incêndio e explosão;Alta;Alto;"1-Sensores de temperatura de mancal.
+2-Sensores de velocidade.
+3-Sensores de subvelocidade.
+4-Sensores de desalinhamento.";"1-Instalar sistema de detecção  de alívio no fosso do elevador por abafamento (certificados).
+2-Instalar sistema de  alívio de explosão na parte externa do elevador.
+3-Instalar  de isolamento de explosão no carregamento e descarregamento do elevador para evitar a propagação de explosão.";;
+Filtro FM 015 ;1-Deflagração no interior do filtro sem alívio, com possível propagação para a moega e outros equipamentos conectados.;"1-Faíscas por origem estática.
+2-Falha nos sistemas de manutenção das gaiolas (soltas).
+3-Perfuração das mangas ou sua impregnação.
+4-Umidade do local (perto do mar) possibilitando que as mangas perda eficiências e fiquem impregnadas.";"1-Não existe sistema de alívio e isolamento certificado.
+2-Falha no aterramento (continuidade).
+2-Rotina de manutenção.
+";Incêndio e explosão;Média para Alta;Médio;1-Sistema de verificação da pressão interna.;"1-Sistema de alívio de explosão certificado.
+2-Sistema de isolamento mecânico de explosão certificado.";;
+Moega Ferroviária M020 ;"1-Formação súbita de nuvem de poeira com possível ignição por motor ou faísca eletrostática.
+2-Uso de ar comprimido na limpeza.
+3-Falha no sistema de aspiração de pó.
+4-Acúmulo de carga estática.
+";"1-Formação de nuvem de poeira combustível na moega de recebimento.
+2-Acúmulo de carga estática com possibilidade de geração de faíscas.";"1-Procedimento não adequado de limpeza.
+2-Prática operacional insegura.
+3-Falta de sistema de aterramento adequado.
+3-Atrito entre grãos e superfície metálicas.
+umidade do ar baixa.";Incêndio e explosão;Média para Alta;Médio;"1-Sistema de aspiração na moega.
+2-Uso de flaps nas moegas, para evitar o retorno da poeira.
+3-Istalaçoes EX para área classificada.";"1-Proibição de uso de ar comprimido para limpeza ou estabelecer regras seguras de uso.
+2-Sistema de aterramento dos vagões com certificação de funcionamento.";;
+TC 020 A;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+3-Ambiente sujo.
+";"1-Iluminação não EX em uma das lâmpadas.
+2-Limpeza por ar comprimido, tornando área classificada para Zona 22.
+3-Superaquecimento dos roletes.
+4-Falta de sensores de prevenção de falhas.
+";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Alto;"1-Sensor de velocidade.
+
+ ";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX. 
+3-Instalar sistema de detecção por cabo linear. 
+4-Revisão sistemática do sistema de aterramento (conexões).
+5-Instalar sensor de desalinhamento e temperatura de mancal.
+";;
+TC 020 B;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+3-Ambiente sujo.
+";"1-Limpeza por ar comprimido, tornando área classificada para Zona 22.
+2-Superaquecimento dos roletes.
+3-Falta de sensores de prevenção de falhas.
+";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Alto;"1-Sensor de velocidade.
+
+ ";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX.
+3-Instalar sistema de detecção por cabo linear. 
+4-Revisão sistemática do sistema de aterramento (conexões).
+5-Instalar sensor de desalinhamento e temperatura de mancal.
+";;
+TC 020 C;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+3-Ambiente sujo.
+";"
+1-Limpeza por ar comprimido, tornando área classificada para Zona 22.
+2-Superaquecimento dos roletes.
+3-Falta de sensores de prevenção de falhas.
+";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Alto;"1-Sensor de velocidade.
+
+ ";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX.
+3-Instalar sistema de detecção por cabo linear. 
+4-Revisão sistemática do sistema de aterramento (conexões).
+5-Instalar sensor de desalinhamento e temperatura de mancal.
+";;
+EL 20A;1-Explosão por faíscas mecânicas, elétricas estáticas/manutenções incorretas.;"1-Desalinhamento de banda.
+2-Faíscas estáticas.
+3-Fa´sscas mecânicas.
+4-Falhas de manutenção.
+5-Falta de sistema de proteção contra explosão certificados, (instalação de painéis caseiros).";"1-Manutenção inadequada.
+2-Não medir a continuidade para garantir o aterramento.
+3-Desalinhamento/embuchamento.
+4-Atualização dos procedimentos de manutenção.
+";Incêndio e explosão;Alta;Alto;"1-Sensores de temperatura de mancal.
+2-Sensores de velocidade.
+3-Sensores de subvelocidade.
+4-Sensores de desalinhamento.";"1-Instalar sistema de alívio no fosso do elevador por abafamento (certificados).
+2-Instalar sistemade alívio de explosão na parte externa do elevador.
+3-Instalar sistema de isolamento de explosão no carregamento e descarregamento do elevador para evitar a propagação de explosão.";;
+TC 20 D;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+3-Ambiente sujo.
+";"1-Limpeza por ar comprimido, tornando área classificada para Zona 22.
+2-Superaquecimento dos roletes.
+3-Falta de sensores de prevenção de falhas.
+";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Alto;Não existe.;"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX.
+3-Instalar sistema de detecção por cabo linear. 
+4-Revisão sistemática do sistema de aterramento (conexões).
+5-Instalar sensor de desalinhamento e temperatura de mancal, velocidade e embuchamento.";;
+TC 15 A;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido. 
+3-Ambiente sujo.
+";"1-Limpeza por ar comprimido, tornando área classificada para Zona 22.
+2-Superaquecimento dos roletes.
+3-Falta de sensores de prevenção de falhas.
+";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Médio;1-Sensor de embuchamento. ;"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX.
+3-Instalar sistema de detecção por cabo linear. de detecção por cabo linear.
+4-Revisão sistemática do sistema de aterramento (conexões).
+5-Instalar sensor de desalinhamento e temperatura de mancal, velocidade e embuchamento.";;
+TC 015 B;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido.
+3-Ambiente sujo.
+";"1-Limpeza por ar comprimido, tornando área classificada para Zona 22.
+2-Superaquecimento dos roletes.
+3-Falta de sensores de prevenção de falhas.
+";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Média;Alto;"1-Sensores de temperatura de mancal.
+2-Sensores de velocidade.
+3-Sensores de embuchamento.
+";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX.
+3-Instalar sistema de detecção por cabo linear. 
+4-Revisão sistemática do sistema de aterramento (conexões).
+5-Instalar sensor de desalinhamento e temperatura de mancal, velocidade e embuchamento.";;
+Moega MO 015;"1-Formação súbita de nuvem de poeira com possível ignição por motor ou faísca eletrostática.
+2-Uso de ar comprimido na limpeza.
+3-Falha no sistema de aspiração.
+4-Acúmulo de carga estática.
+";"1-Formação de nuvem de poeira combustível na moega de recebimento.
+2-Acúmulo de carga estática com possibilidade de geração de faíscas.
+3-Faíscas pelo escapamento dos caminhões.";"1-Procedimento não adequado de limpeza.
+2-Prática operacional insegura.
+3-Falta de sistema de aterramento adequado.
+4-Atrito entre grãos e superfície metálicas.
+5-Umidade do ar baixa.
+6-Problemas de sincronização incorreta do motor da pá carregadeira/acúmulo de depósitos de carbono no escapamento ou camara de combustão do motor.";Incêndio e explosão;Média para Alta;Médio;"1-Sistema de aspiração na moega.
+2-Uso de flaps nas moegas, para evitar o retorno da poeira.
+3-Verificar Instalações EX para área classificada.";"1-Proibição de uso de ar comprimido para limpeza ou estabelecer regras seguras de uso.
+2-Sistema de aterramento do caminhão com intertravamento com o tombador (o tombador só será acionado quando o caminhão estiver devidamente aterrado.";;
+CT 015;"1-Formação de nuvem de poeiras por vazamentos nos equipamentos.
+2-Formação de nuvem por processo de limpeza por ar comprimido. 
+3-A correia esta fletindo no meio.";"1-Verificar Iluminação Ex.
+2-Limpeza por ar comprimido, tornando área classificada para Zona 22.
+3-Superaquecimento dos roletes.
+4-como a correia fletiu no meio está com retorno de produto (acúmulo), necessitando de limpeza mais frequente.
+";"1-Falta de atualização do sistema de iluminação.
+2-Procedimento de limpeza inadequado.
+3-Escapes de pó por frestas.
+";Incêndio e explosão;Alta;Alto;"1-Sensor de velocidade.
+2-Sensor de embuchamento.
+3-Sensor temperatura.
+4-Sensor de detalhamento.
+ ";"1-Proibir limpeza por ar comprimido (mudar procedimentos).
+2-Revisar sistema EX.
+3-Instalar sistema de detecção por cabo linear. 
+4-Revisão sistemática de sistema de aterramento.
+";;
+CT 255-1 (TRIPPER);1-Defragração para o interior do armazém AG 255.;"1-Falha no sistema de alinhamento.
+2-Superaquecimento dos roletes.";"1-Falha no sensor de detalhamento.
+2-Travamento dos roletes.";Incêndio e explosão;Alta;Alto;1-Sensor de velocidade.;"1-Cabo de detecção linear.
+2-Sensores de vibração (recomendado).
+3-Sensor de temperatura (sem fio) recomendado.
+4-Sensor de rasco de lona (banda).
+5-Revisão sistemática do aterramento (conexões).";;
+CT 255-2 (TRIPPER);1-Defragração para o interior do armazém AG 255.;"1-Falha no sistema de alinhamento.
+2-Superaquecimento dos roletes.";"1-Falha no sensor de detalhamento.
+2-Travamento dos roletes.";Incêndio e explosão;Alta;Alto;1-Sensor de velocidade.;"1-Cabo de detecção linear.
+2-Sensores de vibração (recomendado).
+3-Sensor de temperatura (sem fio) recomendado.
+4-Sensor de rasco de lona (banda).
+5-Revisão sistemática do aterramento (conexões).";;
+Armazém AG 255;1-Defragações internas.;"1-Falhas por superaquecimento nas esteiras transportadoras.
+2-Faíscas geradas por contado das laminas das pás carregadeiras com o piso.
+3-Limpeza com ar comprimido.
+";"1-Falta de sistemas eficientes de detecção de aumentos de temperaturas de mancais ou roletes.
+2-Falta de sistemas de detecção por cabo linear nas esteiras suspensas.
+
+
+";Incêndio e explosão;Média para Alta;Médio;1-Sistema de iluminação e estrutura elétrica EX.;"1-Instalar cabos de detecção linear nas esteiras suspensas.
+2-Instalção de sistemas de detecção de temperatura de mancais.
+
+";;
+Armazém AG 65 ;1-Defragações internas.;"1-Falhas por superaquecimento nas esteiras transportadoras.
+2-Faíscas geradas por contado das laminas das pás carregadeiras com o piso.
+3-Limpeza com ar comprimido.
+4-Escapes de faíscas do motor pelo escapamentos das pás carregadeiras.";"1-Falta de sistemas eficientes de detecção de aumentos de temperaturas de mancais ou roletes.
+2-Material faiscante das pás carregadeiras.
+3-Problemas de sincronização incorreta do motor da pá carregadeira/acúmulo de depósitos de carbono no escapamento ou camara de combustão do motor.
+
+";Incêndio e explosão;Média para Alta;Médio;1-Sistema de iluminação e estrutura elétrica EX.;"1-Instalar cabos de detecção linear nas esteiras suspensas.
+2-instalação de sistemas de detecção de temperatura de mancais.
+3-Substituir o material das lâminas das pás carregadeiras, para matérias ante faiscante como Cobre-Berílio (Be-Cu) ou Bronze-Alumínio (Al-Br).
+";;
+EL 065;1-Explosão por faíscas mecânicas, elétricas estáticas/manutenções incorretas.;"1-Desalinhamento de banda.
+2-Faíscas estáticas.
+3-Faíscas mecânicas.
+4-Falhas de manutenção.
+5-Falta de sistema de proteção contra explosão certificados, (instalação de painéis caseiros).";"1-Manutenção inadequada.
+2-Não medir a continuidade para garantir o aterramento.
+3-Desalinhamento/embuchamento.
+4-Atualização dos procedimentos de manutenção.
+";Incêndio e explosão;Média para Alta;Médio;"1-Sensores de temperatura de mancal.
+2-Sensores de velocidade.
+3-Sensores de subvelocidade.
+4-Sensores de desalinhamento.";"1-Instalar sistema de de alívio por abafamento (certificados).
+2-Instalar sistema  de isolamento de explosão no carregamento e descarregamento do elevador para evitar a propagação de explosão.";;
+CT 065;1-Defragração para o interior do armazém AG 65.;"1-Falha no sistema de alinhamento.
+2-Superaquecimento dos roletes.";"1-Falha no sensor de detalhamento.
+2-Travamento dos roletes.";Incêndio e explosão;Alta;Alto;"1-Sensores de temperatura de mancal.
+2-Sensores de velocidade.
+3-Sensores de subvelocidade.
+4-Sensores de desalinhamento.";"1-Instalar cabos de detecção linear nas esteiras suspensas.
+
+";;
+BF 02 (Balança Porto novo);"1-Risco de explosão por trabalhar com grande acúmulo de pó dentro dos seus reservatórios.
+2-Torna a área classificada a sua volta.";1-Escapes de pó pelas frestas. ;1-Falha de manutenção.;Incêndio e explosão;Média para Alta;Médio;1-Equipamento novo, seguindo a classificação de áreas e NR 12.;1-Procedimento de manutenção preventiva para evitar escapes de pó.;;
+BC 07 ;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+BC 08 ;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+BC 09;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+CN 01;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+CN 02;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+CN 03;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+Filtro Pontual FPC TR 701A;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+Filtro Pontual FPC TR 701B;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+Torre pescante 01;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+Torre pescante 02;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+Torre pescante 03;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+BC08;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+Bc 09 ;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+BC06;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+Bc 05;1-Falha de equipamento/equipamento novo.;Equipamento novo ;Nenhum ;Incêndio e explosão;Baixa;Baixo;"1-Equipamentos EX.
+2-Todos os sensores instalados.";"1-Procedimentos de manutenção preventivos.
+2-Instalar cabo de detecção linear.";;
+;;;;;;;;;;
+;;;;;;;;;;
