@@ -91,7 +91,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { status, progress, errorCode, errorMessage, pdfPath, finishedAt } =
+    const { status, progress, currentStep, errorCode, errorMessage, pdfPath, startedAt, finishedAt } =
       parseResult.data;
 
     // Verifica existência antes de atualizar
@@ -105,9 +105,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       data: {
         ...(status !== undefined && { status }),
         ...(progress !== undefined && { progress }),
+        ...(currentStep !== undefined && { currentStep }),
         ...(errorCode !== undefined && { errorCode }),
         ...(errorMessage !== undefined && { errorMessage }),
         ...(pdfPath !== undefined && { pdfPath }),
+        ...(startedAt !== undefined && { startedAt: new Date(startedAt) }),
         ...(finishedAt !== undefined && { finishedAt: new Date(finishedAt) }),
       },
     });

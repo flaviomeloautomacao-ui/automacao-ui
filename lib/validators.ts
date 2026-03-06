@@ -29,9 +29,11 @@ export const updateJobSchema = z
       .min(0, "progress must be >= 0")
       .max(100, "progress must be <= 100")
       .optional(),
+    currentStep: z.string().optional(),
     errorCode: z.string().optional(),
     errorMessage: z.string().optional(),
     pdfPath: z.string().optional(),
+    startedAt: z.string().datetime().optional(),
     finishedAt: z.string().datetime().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
@@ -39,6 +41,20 @@ export const updateJobSchema = z
   });
 
 export type UpdateJobInput = z.infer<typeof updateJobSchema>;
+
+// ─── Atualização de Step (PATCH) ──────────────────────────
+export const updateStepSchema = z
+  .object({
+    status: z.enum(["queued", "processing", "done", "error"]).optional(),
+    startedAt: z.string().datetime().optional(),
+    completedAt: z.string().datetime().optional(),
+    errorMessage: z.string().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided",
+  });
+
+export type UpdateStepInput = z.infer<typeof updateStepSchema>;
 
 // ─── Query params para listagem ───────────────────────────
 export const listJobsQuerySchema = z.object({

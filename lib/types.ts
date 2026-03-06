@@ -47,8 +47,12 @@ export interface CreateJobPayload {
 export interface UpdateJobPayload {
   status?: "queued" | "processing" | "done" | "error";
   progress?: number;
+  currentStep?: string;
   errorCode?: string;
   errorMessage?: string;
+  pdfPath?: string;
+  startedAt?: string;
+  finishedAt?: string;
 }
 
 // ─── Payloads de saída (POST /api/jobs) ───────────────────

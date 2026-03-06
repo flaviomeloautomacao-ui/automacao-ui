@@ -12,8 +12,8 @@ import { parseSpreadsheet } from "@/lib/spreadsheetParser";
 import { validateSpreadsheet } from "@/lib/spreadsheetContract";
 import { getArchiveExpirationDate, formatDatePath } from "@/lib/date";
 import { getSupabaseAdmin, STORAGE_BUCKET, ensureStorageBucket } from "@/lib/supabaseServer";
-import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS, PYTHON_SERVICE_URL } from "@/lib/constants";
-import type { ApiResponse, PythonServiceResponse } from "@/lib/types";
+import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS, PYTHON_SERVICE_URL, PIPELINE_STEPS } from "@/lib/constants";
+import type { ApiResponse, CreateJobResponse } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 7. Persistir em transação Prisma
+    // 7. Persistir em transação Prisma (Job + Rows + Steps)
     const now = new Date();
     const archiveExpiresAt = getArchiveExpirationDate(now);
 
@@ -157,6 +157,7 @@ export async function POST(request: NextRequest) {
           profile,
           status: "queued",
           progress: 0,
+          currentStep: "Aguardando processamento",
           rowCount: validation.rowCount,
         },
       });
@@ -188,6 +189,17 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // 7d. Criar etapas do pipeline
+      await tx.jobStep.createMany({
+        data: PIPELINE_STEPS.map((step) => ({
+          jobId: job.id,
+          name: step.name,
+          label: step.label,
+          order: step.order,
+          status: "queued",
+        })),
+      });
+
       return { job, upload };
     });
 
@@ -210,14 +222,22 @@ export async function POST(request: NextRequest) {
         throw storageError;
       }
 
-      // Salvar path e expiração no Job
-      await prisma.job.update({
-        where: { id: job.id },
-        data: {
-          archivePath: storagePath,
-          archiveExpiresAt,
-        },
-      });
+      // Salvar path e expiração no Job + marcar step 1 como done
+      await prisma.$transaction([
+        prisma.job.update({
+          where: { id: job.id },
+          data: {
+            archivePath: storagePath,
+            archiveExpiresAt,
+            progress: 10,
+            currentStep: "Upload concluído",
+          },
+        }),
+        prisma.jobStep.updateMany({
+          where: { jobId: job.id, name: "upload_storage" },
+          data: { status: "done", completedAt: new Date() },
+        }),
+      ]);
     } catch (storageErr) {
       console.error("[POST /api/jobs] Storage upload failed:", storageErr);
 
@@ -242,86 +262,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 9. Disparar processamento no Python Service (LLM + PDF)
+    // 9. Disparar processamento no Python Service (fire-and-forget)
+    //    O front-end não espera — redireciona imediatamente para /jobs/{jobId}
     try {
-      await prisma.job.update({
-        where: { id: job.id },
-        data: { status: "processing", progress: 10 },
-      });
-
       const pyForm = new FormData();
       pyForm.append("file", new Blob([buffer], { type: file.type || "application/octet-stream" }), originalFilename);
       pyForm.append("profile", profile);
+      pyForm.append("job_id", job.id);
 
-      const pyRes = await fetch(`${PYTHON_SERVICE_URL}/uploads`, {
+      // Fire-and-forget: NÃO usamos await aqui
+      fetch(`${PYTHON_SERVICE_URL}/process`, {
         method: "POST",
         body: pyForm,
-      });
-
-      const pyJson: PythonServiceResponse = await pyRes.json();
-
-      if (!pyRes.ok || pyJson.error) {
-        const errMsg = pyJson.error?.message ?? `Python Service retornou HTTP ${pyRes.status}`;
-        const errCode = pyJson.error?.code ?? "PYTHON_SERVICE_ERROR";
-
-        await prisma.job.update({
+      }).catch((err) => {
+        console.error("[POST /api/jobs] Fire-and-forget to Python failed:", err);
+        // Atualizar job como error de forma assíncrona
+        prisma.job.update({
           where: { id: job.id },
           data: {
             status: "error",
-            progress: 0,
-            errorCode: errCode,
-            errorMessage: errMsg,
+            errorCode: "PYTHON_SERVICE_UNREACHABLE",
+            errorMessage: `Falha ao conectar com o serviço de geração: ${err instanceof Error ? err.message : "Erro desconhecido"}`,
           },
-        });
-
-        return success(
-          {
-            jobId: job.id,
-            status: "error" as const,
-            warning: `Job criado, mas o processamento falhou: ${errMsg}`,
-          },
-          201,
-        );
-      }
-
-      // Sucesso — atualizar Job com resultado do Python
-      await prisma.job.update({
-        where: { id: job.id },
-        data: {
-          status: "done",
-          progress: 100,
-          pdfPath: pyJson.data.pdf_path,
-          finishedAt: new Date(),
-        },
+        }).catch(console.error);
       });
     } catch (pyErr) {
-      console.error("[POST /api/jobs] Python Service call failed:", pyErr);
-
-      await prisma.job.update({
-        where: { id: job.id },
-        data: {
-          status: "error",
-          progress: 0,
-          errorCode: "PYTHON_SERVICE_UNREACHABLE",
-          errorMessage: `Falha ao conectar com o serviço de geração: ${pyErr instanceof Error ? pyErr.message : "Erro desconhecido"}`,
-        },
-      });
-
-      return success(
-        {
-          jobId: job.id,
-          status: "error" as const,
-          warning: "Job criado, mas o serviço de geração não está disponível.",
-        },
-        201,
-      );
+      console.error("[POST /api/jobs] Python Service dispatch failed:", pyErr);
+      // Não falha o request — o job foi criado com sucesso
     }
 
-    // 10. Retorno de sucesso
+    // 10. Retorno imediato — front redireciona para /jobs/{jobId}
     return success(
       {
         jobId: job.id,
-        status: "done" as const,
+        status: "queued" as const,
       },
       201,
     );

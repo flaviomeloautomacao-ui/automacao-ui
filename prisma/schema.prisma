@@ -27,6 +27,7 @@ model Job {
   profile      String    // ex: "dust", "gas", "vapors"
   status       JobStatus @default(queued)
   progress     Int?      @default(0) // 0-100
+  currentStep  String?   @map("current_step") // etapa legível: "Gerando recomendações…"
   rowCount     Int?      @map("row_count")
   errorCode    String?   @map("error_code")
   errorMessage String?   @map("error_message")
@@ -37,6 +38,7 @@ model Job {
 
   // PDF gerado pelo serviço Python
   pdfPath    String?   @map("pdf_path")
+  startedAt  DateTime? @map("started_at")
   finishedAt DateTime? @map("finished_at")
 
   createdAt DateTime @default(now()) @map("created_at")

@@ -4,20 +4,12 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Card, CardHeader, CardBody, CardFooter, Progress, Button, Stepper } from "@/components/ui";
 import { JobStatusBadge } from "@/components/jobs/JobStatusBadge";
 import type { ApiResponse, Job, JobStep, JobDetailResponse } from "@/lib/types";
+import { POLL_INTERVAL_MS, MAX_POLL_CYCLES, TERMINAL_STATUSES } from "@/lib/constants";
 import Link from "next/link";
 
 interface DownloadResponse {
   url: string;
 }
-
-/** Status considerados finais (não requerem polling) */
-const TERMINAL_STATUSES = new Set(["done", "error"]);
-
-/** Intervalo de polling em milissegundos */
-const POLL_INTERVAL_MS = 3_000;
-
-/** Máximo de ciclos de polling para evitar loop infinito */
-const MAX_POLL_CYCLES = 200; // ~10 min
 
 interface JobDetailProps {
   initialJob: Job;
@@ -54,8 +46,17 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
     !TERMINAL_STATUSES.has(initialJob.status),
   );
   const [downloading, setDownloading] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
   const pollCount = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  /** Detecta job "travado" — sem atualização há mais de 5 minutos */
+  const STALE_THRESHOLD_MS = 5 * 60 * 1000;
+  const isStale =
+    !TERMINAL_STATUSES.has(job.status) &&
+    !polling &&
+    !timedOut &&
+    Date.now() - new Date(job.updatedAt).getTime() > STALE_THRESHOLD_MS;
 
   const stopPolling = useCallback(() => {
     setPolling(false);
@@ -76,6 +77,7 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
       pollCount.current += 1;
 
       if (pollCount.current >= MAX_POLL_CYCLES) {
+        setTimedOut(true);
         stopPolling();
         return;
       }
@@ -153,6 +155,20 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
             color={progressColor}
           />
 
+          {/* Current Step Label */}
+          {job.currentStep && !TERMINAL_STATUSES.has(job.status) && (
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: "#4b5563",
+                fontStyle: "italic",
+                marginTop: "-0.5rem",
+              }}
+            >
+              {job.currentStep}
+            </p>
+          )}
+
           {/* Pipeline Steps */}
           {steps && steps.length > 0 && (
             <section>
@@ -193,6 +209,55 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
               <p style={{ fontSize: "0.8125rem", color: "#15803d" }}>
                 O PDF está pronto para download.
               </p>
+            </div>
+          )}
+
+          {/* Timeout / Stale Banner */}
+          {(timedOut || isStale) && !TERMINAL_STATUSES.has(job.status) && (
+            <div
+              style={{
+                padding: "0.875rem 1rem",
+                borderRadius: "0.5rem",
+                backgroundColor: "#fffbeb",
+                border: "1px solid #fde68a",
+              }}
+            >
+              <p
+                style={{
+                  fontWeight: 600,
+                  color: "#92400e",
+                  fontSize: "0.875rem",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                {timedOut
+                  ? "Tempo de acompanhamento excedido"
+                  : "Job sem atualização há mais de 5 minutos"}
+              </p>
+              <p style={{ fontSize: "0.8125rem", color: "#a16207" }}>
+                O processamento pode ter falhado no servidor. Verifique os logs
+                do serviço Python ou tente reenviar o arquivo.
+              </p>
+              <button
+                onClick={() => {
+                  setTimedOut(false);
+                  pollCount.current = 0;
+                  setPolling(true);
+                }}
+                style={{
+                  marginTop: "0.5rem",
+                  padding: "0.375rem 0.75rem",
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
+                  color: "#92400e",
+                  backgroundColor: "#fef3c7",
+                  border: "1px solid #fde68a",
+                  borderRadius: "0.375rem",
+                  cursor: "pointer",
+                }}
+              >
+                Tentar novamente
+              </button>
             </div>
           )}
 
