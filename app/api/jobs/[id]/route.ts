@@ -91,7 +91,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { status, progress, errorCode, errorMessage } = parseResult.data;
+    const { status, progress, errorCode, errorMessage, pdfPath, finishedAt } =
+      parseResult.data;
 
     // Verifica existência antes de atualizar
     const existing = await prisma.job.findUnique({ where: { id } });
@@ -106,6 +107,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         ...(progress !== undefined && { progress }),
         ...(errorCode !== undefined && { errorCode }),
         ...(errorMessage !== undefined && { errorMessage }),
+        ...(pdfPath !== undefined && { pdfPath }),
+        ...(finishedAt !== undefined && { finishedAt: new Date(finishedAt) }),
       },
     });
 

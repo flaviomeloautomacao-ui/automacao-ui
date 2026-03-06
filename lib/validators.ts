@@ -31,6 +31,8 @@ export const updateJobSchema = z
       .optional(),
     errorCode: z.string().optional(),
     errorMessage: z.string().optional(),
+    pdfPath: z.string().optional(),
+    finishedAt: z.string().datetime().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one field must be provided",

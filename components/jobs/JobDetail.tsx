@@ -6,6 +6,10 @@ import { JobStatusBadge } from "@/components/jobs/JobStatusBadge";
 import type { ApiResponse, Job, JobStep, JobDetailResponse } from "@/lib/types";
 import Link from "next/link";
 
+interface DownloadResponse {
+  url: string;
+}
+
 /** Status considerados finais (não requerem polling) */
 const TERMINAL_STATUSES = new Set(["done", "error"]);
 
@@ -49,6 +53,7 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
   const [polling, setPolling] = useState(
     !TERMINAL_STATUSES.has(initialJob.status),
   );
+  const [downloading, setDownloading] = useState(false);
   const pollCount = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -93,6 +98,25 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
       }
     };
   }, [job.id, job.status, stopPolling]);
+
+  const handleDownload = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/download`);
+      const json: ApiResponse<DownloadResponse> = await res.json();
+
+      if (json.error) {
+        alert(json.error.message);
+        return;
+      }
+
+      window.open(json.data.url, "_blank");
+    } catch {
+      alert("Falha ao baixar o PDF. Tente novamente.");
+    } finally {
+      setDownloading(false);
+    }
+  }, [job.id]);
 
   const progressColor =
     job.status === "error" ? "red" : job.status === "done" ? "green" : "blue";
@@ -144,6 +168,32 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
               </h2>
               <Stepper steps={steps} />
             </section>
+          )}
+
+          {/* Done Banner */}
+          {job.status === "done" && (
+            <div
+              style={{
+                padding: "0.875rem 1rem",
+                borderRadius: "0.5rem",
+                backgroundColor: "#f0fdf4",
+                border: "1px solid #bbf7d0",
+              }}
+            >
+              <p
+                style={{
+                  fontWeight: 600,
+                  color: "#166534",
+                  fontSize: "0.875rem",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                Laudo concluído com sucesso!
+              </p>
+              <p style={{ fontSize: "0.8125rem", color: "#15803d" }}>
+                O PDF está pronto para download.
+              </p>
+            </div>
           )}
 
           {/* Error Banner */}
@@ -213,6 +263,13 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
 
             <dt style={{ fontWeight: 600, color: "#6b7280" }}>Atualizado em</dt>
             <dd>{formatDate(job.updatedAt)}</dd>
+
+            {job.finishedAt && (
+              <>
+                <dt style={{ fontWeight: 600, color: "#6b7280" }}>Finalizado em</dt>
+                <dd>{formatDate(job.finishedAt)}</dd>
+              </>
+            )}
           </dl>
         </div>
       </CardBody>
@@ -223,8 +280,12 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
             <Button variant="secondary">Voltar à lista</Button>
           </Link>
           {job.status === "done" && (
-            <Button variant="primary" disabled>
-              Download PDF
+            <Button
+              variant="primary"
+              onClick={handleDownload}
+              disabled={downloading}
+            >
+              {downloading ? "Baixando..." : "Baixar PDF"}
             </Button>
           )}
         </div>

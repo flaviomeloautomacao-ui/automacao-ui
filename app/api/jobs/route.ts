@@ -12,8 +12,8 @@ import { parseSpreadsheet } from "@/lib/spreadsheetParser";
 import { validateSpreadsheet } from "@/lib/spreadsheetContract";
 import { getArchiveExpirationDate, formatDatePath } from "@/lib/date";
 import { getSupabaseAdmin, STORAGE_BUCKET, ensureStorageBucket } from "@/lib/supabaseServer";
-import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS } from "@/lib/constants";
-import type { ApiResponse } from "@/lib/types";
+import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS, PYTHON_SERVICE_URL } from "@/lib/constants";
+import type { ApiResponse, PythonServiceResponse } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -242,11 +242,86 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 9. Retorno de sucesso
+    // 9. Disparar processamento no Python Service (LLM + PDF)
+    try {
+      await prisma.job.update({
+        where: { id: job.id },
+        data: { status: "processing", progress: 10 },
+      });
+
+      const pyForm = new FormData();
+      pyForm.append("file", new Blob([buffer], { type: file.type || "application/octet-stream" }), originalFilename);
+      pyForm.append("profile", profile);
+
+      const pyRes = await fetch(`${PYTHON_SERVICE_URL}/uploads`, {
+        method: "POST",
+        body: pyForm,
+      });
+
+      const pyJson: PythonServiceResponse = await pyRes.json();
+
+      if (!pyRes.ok || pyJson.error) {
+        const errMsg = pyJson.error?.message ?? `Python Service retornou HTTP ${pyRes.status}`;
+        const errCode = pyJson.error?.code ?? "PYTHON_SERVICE_ERROR";
+
+        await prisma.job.update({
+          where: { id: job.id },
+          data: {
+            status: "error",
+            progress: 0,
+            errorCode: errCode,
+            errorMessage: errMsg,
+          },
+        });
+
+        return success(
+          {
+            jobId: job.id,
+            status: "error" as const,
+            warning: `Job criado, mas o processamento falhou: ${errMsg}`,
+          },
+          201,
+        );
+      }
+
+      // Sucesso — atualizar Job com resultado do Python
+      await prisma.job.update({
+        where: { id: job.id },
+        data: {
+          status: "done",
+          progress: 100,
+          pdfPath: pyJson.data.pdf_path,
+          finishedAt: new Date(),
+        },
+      });
+    } catch (pyErr) {
+      console.error("[POST /api/jobs] Python Service call failed:", pyErr);
+
+      await prisma.job.update({
+        where: { id: job.id },
+        data: {
+          status: "error",
+          progress: 0,
+          errorCode: "PYTHON_SERVICE_UNREACHABLE",
+          errorMessage: `Falha ao conectar com o serviço de geração: ${pyErr instanceof Error ? pyErr.message : "Erro desconhecido"}`,
+        },
+      });
+
+      return success(
+        {
+          jobId: job.id,
+          status: "error" as const,
+          warning: "Job criado, mas o serviço de geração não está disponível.",
+        },
+        201,
+      );
+    }
+
+    // 10. Retorno de sucesso
     return success(
       {
         jobId: job.id,
-        status: "queued" as const,
+        status: "done" as const,
       },
       201,
     );

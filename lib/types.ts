@@ -57,3 +57,14 @@ export interface CreateJobResponse {
   status: string;
   warning?: string;
 }
+
+// ─── Resposta do Python Service (POST /uploads) ───────
+export interface PythonServiceData {
+  upload_id: string;
+  draft_id: string;
+  report_id: string;
+  pdf_url: string;
+  pdf_path: string;
+}
+
+export type PythonServiceResponse = ApiResponse<PythonServiceData>;
