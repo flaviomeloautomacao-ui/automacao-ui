@@ -27,13 +27,54 @@ model Job {
   profile      String    // ex: "dust", "gas", "vapors"
   status       JobStatus @default(queued)
   progress     Int?      @default(0) // 0-100
+  rowCount     Int?      @map("row_count")
   errorCode    String?   @map("error_code")
   errorMessage String?   @map("error_message")
+
+  // Arquivo clonado no Supabase Storage
+  archivePath      String?   @map("archive_path")
+  archiveExpiresAt DateTime? @map("archive_expires_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // Relações
+  spreadsheetUpload SpreadsheetUpload?
+
   @@map("jobs")
+}
+
+model SpreadsheetUpload {
+  id               String @id @default(uuid()) @db.Uuid
+  jobId            String @unique @map("job_id") @db.Uuid
+  originalFilename String @map("original_filename")
+  mimeType         String @map("mime_type")
+  size             Int    // tamanho em bytes
+  rowCount         Int    @map("row_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relações
+  job  Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  rows SpreadsheetRow[]
+
+  @@map("spreadsheet_uploads")
+}
+
+model SpreadsheetRow {
+  id             String @id @default(uuid()) @db.Uuid
+  uploadId       String @map("upload_id") @db.Uuid
+  rowIndex       Int    @map("row_index")
+  rawJson        Json   @map("raw_json")
+  normalizedJson Json   @map("normalized_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relações
+  upload SpreadsheetUpload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+
+  @@index([uploadId])
+  @@map("spreadsheet_rows")
 }
 
 // ─── Tabelas pré-existentes (Supabase) ────────────────────

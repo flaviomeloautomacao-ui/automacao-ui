@@ -2,13 +2,18 @@
  * Route Handler — /api/jobs
  *
  * GET  → Lista jobs (limit/offset via query string)
- * POST → Cria job com status 'queued'
+ * POST → Recebe planilha via FormData, valida, persiste e clona no Storage
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { createJobSchema, listJobsQuerySchema } from "@/lib/validators";
-import type { ApiResponse, Job } from "@/lib/types";
+import { listJobsQuerySchema } from "@/lib/validators";
+import { parseSpreadsheet } from "@/lib/spreadsheetParser";
+import { validateSpreadsheet } from "@/lib/spreadsheetContract";
+import { getArchiveExpirationDate, formatDatePath } from "@/lib/date";
+import { getSupabaseAdmin, STORAGE_BUCKET } from "@/lib/supabaseServer";
+import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS } from "@/lib/constants";
+import type { ApiResponse } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -19,12 +24,22 @@ function success<T>(data: T, status = 200) {
   );
 }
 
-function error(code: string, message: string, status = 400) {
-  return NextResponse.json<ApiResponse<never>>(
-    { data: null, error: { code, message } },
+function error(
+  code: string,
+  message: string,
+  status = 400,
+  details?: unknown[],
+) {
+  return NextResponse.json(
+    { data: null, error: { code, message, ...(details ? { details } : {}) } },
     { status },
   );
 }
+
+// ─── Constantes ───────────────────────────────────────────
+
+const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
+const BATCH_SIZE = 500; // linhas por createMany
 
 // ─── GET /api/jobs ────────────────────────────────────────
 
@@ -46,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     const { limit, offset } = queryResult.data;
 
-    const jobs: Job[] = await prisma.job.findMany({
+    const jobs = await prisma.job.findMany({
       take: limit,
       skip: offset,
       orderBy: { createdAt: "desc" },
@@ -63,36 +78,174 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    let body: unknown;
+    // 1. Parse multipart/form-data
+    let formData: FormData;
     try {
-      body = await request.json();
+      formData = await request.formData();
     } catch {
-      return error("INVALID_JSON", "Request body must be valid JSON");
+      return error("INVALID_FORM", "Request must be multipart/form-data.");
     }
 
-    const parseResult = createJobSchema.safeParse(body);
+    const file = formData.get("file") as File | null;
+    const profile = (formData.get("profile") as string | null)?.trim();
 
-    if (!parseResult.success) {
+    // 2. Validar campos obrigatórios
+    if (!file || !(file instanceof File) || file.size === 0) {
+      return error("MISSING_FILE", "O campo 'file' é obrigatório.");
+    }
+
+    if (!profile) {
+      return error("MISSING_PROFILE", "O campo 'profile' é obrigatório.");
+    }
+
+    // 3. Validar extensão
+    const originalFilename = file.name;
+    const ext = originalFilename.toLowerCase().split(".").pop();
+    if (
+      !ext ||
+      !ALLOWED_EXTENSIONS.includes(`.${ext}` as (typeof ALLOWED_EXTENSIONS)[number])
+    ) {
       return error(
-        "INVALID_PAYLOAD",
-        parseResult.error.issues.map((i) => i.message).join("; "),
+        "INVALID_EXTENSION",
+        `Extensão .${ext} não permitida. Use: ${ALLOWED_EXTENSIONS.join(", ")}`,
       );
     }
 
-    const { filename, profile } = parseResult.data;
+    // 4. Validar tamanho
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return error(
+        "FILE_TOO_LARGE",
+        `Arquivo excede o limite de ${MAX_UPLOAD_MB}MB (${(file.size / (1024 * 1024)).toFixed(1)}MB).`,
+      );
+    }
 
-    const job: Job = await prisma.job.create({
-      data: {
-        filename,
-        profile,
-        status: "queued",
-        progress: 0,
-      },
+    // 5. Ler arquivo em memória e parsear
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    let rawRows: string[][];
+    try {
+      rawRows = parseSpreadsheet(buffer, file.type, originalFilename);
+    } catch (parseErr) {
+      return error(
+        "PARSE_ERROR",
+        `Falha ao ler a planilha: ${parseErr instanceof Error ? parseErr.message : "Erro desconhecido"}`,
+      );
+    }
+
+    // 6. Validar contra o contrato
+    const validation = validateSpreadsheet(rawRows);
+
+    if (!validation.valid) {
+      return error(
+        "INVALID_SPREADSHEET",
+        `A planilha contém ${validation.errors.length} erro(s) de validação.`,
+        422,
+        validation.errors,
+      );
+    }
+
+    // 7. Persistir em transação Prisma
+    const now = new Date();
+    const archiveExpiresAt = getArchiveExpirationDate(now);
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 7a. Criar Job
+      const job = await tx.job.create({
+        data: {
+          filename: originalFilename,
+          profile,
+          status: "queued",
+          progress: 0,
+          rowCount: validation.rowCount,
+        },
+      });
+
+      // 7b. Criar SpreadsheetUpload
+      const upload = await tx.spreadsheetUpload.create({
+        data: {
+          jobId: job.id,
+          originalFilename,
+          mimeType: file.type || "application/octet-stream",
+          size: file.size,
+          rowCount: validation.rowCount,
+        },
+      });
+
+      // 7c. Inserir SpreadsheetRows em batches
+      for (let i = 0; i < validation.rows.length; i += BATCH_SIZE) {
+        const batch = validation.rows.slice(i, i + BATCH_SIZE);
+        await tx.spreadsheetRow.createMany({
+          data: batch.map((row, batchIdx) => ({
+            uploadId: upload.id,
+            rowIndex: i + batchIdx + 1, // 1-based
+            rawJson: row,
+            normalizedJson: row,
+          })),
+        });
+      }
+
+      return { job, upload };
     });
 
-    return success(job, 201);
+    // 8. Upload do clone no Supabase Storage (fora da transação)
+    const { job } = result;
+    const storagePath = `${job.id}/${formatDatePath(now)}/${originalFilename}`;
+
+    try {
+      const { error: storageError } = await getSupabaseAdmin().storage
+        .from(STORAGE_BUCKET)
+        .upload(storagePath, buffer, {
+          contentType: file.type || "application/octet-stream",
+          upsert: false,
+        });
+
+      if (storageError) {
+        throw storageError;
+      }
+
+      // Salvar path e expiração no Job
+      await prisma.job.update({
+        where: { id: job.id },
+        data: {
+          archivePath: storagePath,
+          archiveExpiresAt,
+        },
+      });
+    } catch (storageErr) {
+      console.error("[POST /api/jobs] Storage upload failed:", storageErr);
+
+      // Marcar Job como error, mas NÃO reverter os dados
+      await prisma.job.update({
+        where: { id: job.id },
+        data: {
+          status: "error",
+          errorCode: "STORAGE_UPLOAD_FAILED",
+          errorMessage: `Falha ao salvar arquivo no storage: ${storageErr instanceof Error ? storageErr.message : "Erro desconhecido"}`,
+        },
+      });
+
+      // Ainda retorna sucesso parcial — Job criado mas sem arquivo
+      return success(
+        {
+          jobId: job.id,
+          status: job.status,
+          warning: "Job criado, mas o upload do arquivo no storage falhou. O job foi marcado como error.",
+        },
+        201,
+      );
+    }
+
+    // 9. Retorno de sucesso
+    return success(
+      {
+        jobId: job.id,
+        status: "queued" as const,
+      },
+      201,
+    );
   } catch (err) {
     console.error("[POST /api/jobs]", err);
-    return error("INTERNAL_ERROR", "Failed to create job", 500);
+    return error("INTERNAL_ERROR", "Falha ao criar o job.", 500);
   }
 }

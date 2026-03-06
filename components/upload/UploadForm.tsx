@@ -1,37 +1,60 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useState, useRef } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardBody, CardFooter } from "@/components/ui/Card";
 import { ProfileSelect } from "@/components/upload/ProfileSelect";
-import type { ApiResponse, Job } from "@/lib/types";
+import type { ApiResponse, CreateJobResponse } from "@/lib/types";
+import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS } from "@/lib/constants";
 
 interface FieldErrors {
   profile?: string;
-  filename?: string;
+  file?: string;
 }
 
 export function UploadForm() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [validationDetails, setValidationDetails] = useState<unknown[] | null>(
+    null,
+  );
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setApiError(null);
+    setValidationDetails(null);
 
     const form = new FormData(e.currentTarget);
-    const filename = (form.get("filename") as string).trim();
-    const profile = (form.get("profile") as string).trim();
+    const profile = (form.get("profile") as string)?.trim();
+    const file = form.get("file") as File | null;
 
     // ── Client‑side validation ──────────────────────────
     const errors: FieldErrors = {};
     if (!profile) errors.profile = "Selecione um perfil de risco.";
-    if (!filename) errors.filename = "Informe o nome do arquivo.";
+
+    if (!file || file.size === 0) {
+      errors.file = "Selecione um arquivo .xlsx ou .csv.";
+    } else {
+      const ext = file.name.toLowerCase().split(".").pop();
+      if (
+        !ext ||
+        !ALLOWED_EXTENSIONS.includes(
+          `.${ext}` as (typeof ALLOWED_EXTENSIONS)[number],
+        )
+      ) {
+        errors.file = `Extensão .${ext} não permitida. Use: ${ALLOWED_EXTENSIONS.join(", ")}`;
+      }
+      if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+        errors.file = `Arquivo excede o limite de ${MAX_UPLOAD_MB}MB.`;
+      }
+    }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -42,20 +65,26 @@ export function UploadForm() {
     setLoading(true);
 
     try {
+      const body = new FormData();
+      body.append("file", file!);
+      body.append("profile", profile!);
+
       const res = await fetch("/api/jobs", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename, profile }),
+        body,
       });
 
-      const json: ApiResponse<Job> = await res.json();
+      const json: ApiResponse<CreateJobResponse> = await res.json();
 
       if (json.error) {
         setApiError(json.error.message);
+        if ("details" in json.error && Array.isArray(json.error.details)) {
+          setValidationDetails(json.error.details);
+        }
         return;
       }
 
-      router.push(`/jobs/${json.data.id}`);
+      router.push(`/jobs/${json.data.jobId}`);
     } catch {
       setApiError("Erro inesperado ao criar o job. Tente novamente.");
     } finally {
@@ -83,7 +112,7 @@ export function UploadForm() {
               disabled={loading}
             />
 
-            {/* Filename input (temporário — será substituído por upload real) */}
+            {/* File upload */}
             <div
               style={{
                 display: "flex",
@@ -92,21 +121,23 @@ export function UploadForm() {
               }}
             >
               <label
-                htmlFor="filename"
+                htmlFor="file"
                 style={{ fontSize: "0.875rem", fontWeight: 600 }}
               >
-                Nome do Arquivo
+                Planilha (.xlsx ou .csv)
               </label>
               <input
-                id="filename"
-                name="filename"
-                type="text"
-                placeholder="ex: planilha_dha.csv"
+                ref={fileInputRef}
+                id="file"
+                name="file"
+                type="file"
+                accept=".xlsx,.csv"
                 disabled={loading}
+                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
                 style={{
                   padding: "0.5rem 0.75rem",
                   borderRadius: "0.375rem",
-                  border: fieldErrors.filename
+                  border: fieldErrors.file
                     ? "1px solid #ef4444"
                     : "1px solid #d1d5db",
                   fontSize: "0.875rem",
@@ -114,9 +145,14 @@ export function UploadForm() {
                   color: "var(--foreground)",
                 }}
               />
-              {fieldErrors.filename && (
+              {selectedFile && (
+                <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                  {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                </span>
+              )}
+              {fieldErrors.file && (
                 <span style={{ fontSize: "0.75rem", color: "#ef4444" }}>
-                  {fieldErrors.filename}
+                  {fieldErrors.file}
                 </span>
               )}
             </div>
@@ -134,7 +170,35 @@ export function UploadForm() {
                   border: "1px solid #fecaca",
                 }}
               >
-                {apiError}
+                <p style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
+                  {apiError}
+                </p>
+                {validationDetails && validationDetails.length > 0 && (
+                  <ul
+                    style={{
+                      listStyle: "disc",
+                      paddingLeft: "1.25rem",
+                      marginTop: "0.5rem",
+                      fontSize: "0.8rem",
+                      maxHeight: "12rem",
+                      overflowY: "auto",
+                    }}
+                  >
+                    {validationDetails.slice(0, 20).map((detail, i) => {
+                      const d = detail as Record<string, string>;
+                      return (
+                        <li key={i}>
+                          {d.column ? <><strong>{d.column}</strong>{" | "}</> : null}
+                          {d.row ? <>Linha {d.row}{" | "}</> : null}
+                          {d.message ?? JSON.stringify(d)}
+                        </li>
+                      );
+                    })}
+                    {validationDetails.length > 20 && (
+                      <li>… e mais {validationDetails.length - 20} erro(s)</li>
+                    )}
+                  </ul>
+                )}
               </div>
             )}
           </div>
