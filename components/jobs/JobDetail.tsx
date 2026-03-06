@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Card, CardHeader, CardBody, CardFooter, Progress, Button } from "@/components/ui";
+import { Card, CardHeader, CardBody, CardFooter, Progress, Button, Stepper } from "@/components/ui";
 import { JobStatusBadge } from "@/components/jobs/JobStatusBadge";
-import type { ApiResponse, Job } from "@/lib/types";
+import type { ApiResponse, Job, JobStep, JobDetailResponse } from "@/lib/types";
 import Link from "next/link";
 
 /** Status considerados finais (não requerem polling) */
@@ -17,14 +17,15 @@ const MAX_POLL_CYCLES = 200; // ~10 min
 
 interface JobDetailProps {
   initialJob: Job;
+  initialSteps: JobStep[] | null;
 }
 
-async function fetchJob(id: string): Promise<Job | null> {
+async function fetchJobDetail(id: string): Promise<JobDetailResponse | null> {
   try {
     const res = await fetch(`/api/jobs/${id}`);
     if (!res.ok) return null;
 
-    const json: ApiResponse<Job> = await res.json();
+    const json: ApiResponse<JobDetailResponse> = await res.json();
     return json.error ? null : json.data;
   } catch {
     return null;
@@ -42,8 +43,9 @@ function formatDate(date: string | Date): string {
   });
 }
 
-export function JobDetail({ initialJob }: JobDetailProps) {
+export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
   const [job, setJob] = useState<Job>(initialJob);
+  const [steps, setSteps] = useState<JobStep[] | null>(initialSteps);
   const [polling, setPolling] = useState(
     !TERMINAL_STATUSES.has(initialJob.status),
   );
@@ -73,12 +75,13 @@ export function JobDetail({ initialJob }: JobDetailProps) {
         return;
       }
 
-      const updated = await fetchJob(job.id);
-      if (!updated) return; // silence network errors, keep previous state
+      const result = await fetchJobDetail(job.id);
+      if (!result) return; // silence network errors, keep previous state
 
-      setJob(updated);
+      setJob(result.job);
+      setSteps(result.steps);
 
-      if (TERMINAL_STATUSES.has(updated.status)) {
+      if (TERMINAL_STATUSES.has(result.job.status)) {
         stopPolling();
       }
     }, POLL_INTERVAL_MS);
@@ -126,6 +129,61 @@ export function JobDetail({ initialJob }: JobDetailProps) {
             color={progressColor}
           />
 
+          {/* Pipeline Steps */}
+          {steps && steps.length > 0 && (
+            <section>
+              <h2
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  color: "#374151",
+                  marginBottom: "0.75rem",
+                }}
+              >
+                Etapas do Pipeline
+              </h2>
+              <Stepper steps={steps} />
+            </section>
+          )}
+
+          {/* Error Banner */}
+          {job.status === "error" && (
+            <div
+              style={{
+                padding: "0.875rem 1rem",
+                borderRadius: "0.5rem",
+                backgroundColor: "#fef2f2",
+                border: "1px solid #fecaca",
+              }}
+            >
+              <p
+                style={{
+                  fontWeight: 600,
+                  color: "#991b1b",
+                  fontSize: "0.875rem",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                Ocorreu um erro no processamento
+              </p>
+              {job.errorCode && (
+                <p style={{ fontSize: "0.8125rem", color: "#b91c1c" }}>
+                  Código: {job.errorCode}
+                </p>
+              )}
+              {job.errorMessage && (
+                <p style={{ fontSize: "0.8125rem", color: "#b91c1c" }}>
+                  {job.errorMessage}
+                </p>
+              )}
+              {!job.errorMessage && !job.errorCode && (
+                <p style={{ fontSize: "0.8125rem", color: "#b91c1c" }}>
+                  Erro desconhecido. Entre em contato com o suporte.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Metadata */}
           <dl
             style={{
@@ -143,25 +201,18 @@ export function JobDetail({ initialJob }: JobDetailProps) {
             <dt style={{ fontWeight: 600, color: "#6b7280" }}>Perfil</dt>
             <dd>{job.profile}</dd>
 
+            {job.rowCount != null && (
+              <>
+                <dt style={{ fontWeight: 600, color: "#6b7280" }}>Linhas</dt>
+                <dd>{job.rowCount}</dd>
+              </>
+            )}
+
             <dt style={{ fontWeight: 600, color: "#6b7280" }}>Criado em</dt>
             <dd>{formatDate(job.createdAt)}</dd>
 
             <dt style={{ fontWeight: 600, color: "#6b7280" }}>Atualizado em</dt>
             <dd>{formatDate(job.updatedAt)}</dd>
-
-            {job.errorCode && (
-              <>
-                <dt style={{ fontWeight: 600, color: "#ef4444" }}>Código de erro</dt>
-                <dd style={{ color: "#ef4444" }}>{job.errorCode}</dd>
-              </>
-            )}
-
-            {job.errorMessage && (
-              <>
-                <dt style={{ fontWeight: 600, color: "#ef4444" }}>Mensagem de erro</dt>
-                <dd style={{ color: "#ef4444" }}>{job.errorMessage}</dd>
-              </>
-            )}
           </dl>
         </div>
       </CardBody>

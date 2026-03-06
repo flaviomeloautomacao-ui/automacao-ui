@@ -49,3 +49,37 @@ export function getSupabaseAdmin(): SupabaseClient {
 
 /** Nome do bucket no Supabase Storage para arquivos de planilha */
 export const STORAGE_BUCKET = "spreadsheets-archive";
+
+/**
+ * Garante que o bucket de storage existe, criando-o se necessário.
+ * Chamado uma vez antes do primeiro upload.
+ */
+let bucketEnsured = false;
+
+export async function ensureStorageBucket(): Promise<void> {
+  if (bucketEnsured) return;
+
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase.storage.getBucket(STORAGE_BUCKET);
+
+  if (error && !data) {
+    // Bucket não existe — criar
+    const { error: createError } = await supabase.storage.createBucket(
+      STORAGE_BUCKET,
+      {
+        public: false,
+        fileSizeLimit: 20 * 1024 * 1024, // 20MB
+      },
+    );
+
+    if (createError) {
+      throw new Error(
+        `Falha ao criar bucket "${STORAGE_BUCKET}": ${createError.message}`,
+      );
+    }
+
+    console.log(`[Supabase] Bucket "${STORAGE_BUCKET}" criado com sucesso.`);
+  }
+
+  bucketEnsured = true;
+}

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { JobDetail } from "@/components/jobs/JobDetail";
-import type { ApiResponse, Job } from "@/lib/types";
+import type { ApiResponse, JobDetailResponse } from "@/lib/types";
 
 interface JobDetailPageProps {
   params: Promise<{ id: string }>;
@@ -13,7 +13,7 @@ interface JobDetailPageProps {
  * client component `JobDetail`, que cuida do polling.
  */
 
-async function fetchJob(id: string): Promise<Job | null> {
+async function fetchJob(id: string): Promise<JobDetailResponse | null> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
   const res = await fetch(`${baseUrl}/api/jobs/${id}`, {
@@ -22,22 +22,22 @@ async function fetchJob(id: string): Promise<Job | null> {
 
   if (!res.ok) return null;
 
-  const json: ApiResponse<Job> = await res.json();
+  const json: ApiResponse<JobDetailResponse> = await res.json();
   return json.error ? null : json.data;
 }
 
 export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const { id } = await params;
 
-  const job = await fetchJob(id);
+  const result = await fetchJob(id);
 
-  if (!job) {
+  if (!result) {
     notFound();
   }
 
   return (
     <main style={{ maxWidth: 800, margin: "0 auto", padding: "2rem 1rem" }}>
-      <JobDetail initialJob={job} />
+      <JobDetail initialJob={result.job} initialSteps={result.steps} />
     </main>
   );
 }

@@ -7,9 +7,17 @@
  */
 
 import type { JobModel } from "@/lib/generated/prisma/models/Job";
+import type { JobStepModel } from "@/lib/generated/prisma/models/JobStep";
 
 // ─── Re‑export do modelo Prisma como DTO ──────────────────
 export type Job = JobModel;
+export type JobStep = JobStepModel;
+
+// ─── Resposta detalhada de um Job (GET /api/jobs/:id) ─────
+export interface JobDetailResponse {
+  job: Job;
+  steps: JobStep[] | null;
+}
 
 // ─── Envelope de resposta da API ──────────────────────────
 export interface ApiError {

@@ -11,7 +11,7 @@ import { listJobsQuerySchema } from "@/lib/validators";
 import { parseSpreadsheet } from "@/lib/spreadsheetParser";
 import { validateSpreadsheet } from "@/lib/spreadsheetContract";
 import { getArchiveExpirationDate, formatDatePath } from "@/lib/date";
-import { getSupabaseAdmin, STORAGE_BUCKET } from "@/lib/supabaseServer";
+import { getSupabaseAdmin, STORAGE_BUCKET, ensureStorageBucket } from "@/lib/supabaseServer";
 import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types";
 
@@ -169,6 +169,7 @@ export async function POST(request: NextRequest) {
           mimeType: file.type || "application/octet-stream",
           size: file.size,
           rowCount: validation.rowCount,
+          metadata: validation.metadata as Record<string, string>,
         },
       });
 
@@ -179,6 +180,8 @@ export async function POST(request: NextRequest) {
           data: batch.map((row, batchIdx) => ({
             uploadId: upload.id,
             rowIndex: i + batchIdx + 1, // 1-based
+            equipmentName: row["Equipamento"] || null,
+            equipmentDescription: row["Descrição do equipamento"] || null,
             rawJson: row,
             normalizedJson: row,
           })),
@@ -193,6 +196,9 @@ export async function POST(request: NextRequest) {
     const storagePath = `${job.id}/${formatDatePath(now)}/${originalFilename}`;
 
     try {
+      // Garantir que o bucket existe antes do upload
+      await ensureStorageBucket();
+
       const { error: storageError } = await getSupabaseAdmin().storage
         .from(STORAGE_BUCKET)
         .upload(storagePath, buffer, {

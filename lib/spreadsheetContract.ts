@@ -2,11 +2,31 @@
  * Contrato da Planilha DHA (Análise de Riscos)
  *
  * Define colunas obrigatórias, tipos esperados e validações por linha.
- * Para ajustar o contrato, edite COLUMNS e ROW_VALIDATORS abaixo.
+ * Para ajustar o contrato, edite COLUMNS abaixo.
  *
  * O parser ignora automaticamente as primeiras linhas de metadados
  * (Projeto, Data, Revisão) e localiza a linha de cabeçalho pela
  * presença de TODAS as colunas obrigatórias.
+ *
+ * ─── Padrão da planilha ───────────────────────────────────────────
+ *
+ * Linhas 1-5 (metadados):
+ *   ;;;;;;;;;;
+ *   ;;Projeto:;Nome do Projeto;;;;;;;
+ *   ;;Data:;DD/MM/YYYY;;;;;;;
+ *   ;;Revisão:;000;;;;;;;
+ *   ;;;;;;;;;;
+ *
+ * Linha 6 (cabeçalho):
+ *   Equipamento;Descrição do equipamento;Riscos;Perigo;
+ *   Causas Possíveis;Consequências;
+ *   Categoria da Severidade;Categoria do Risco;
+ *   Medidas Preventivas Existentes;Medidas Preventivas a Implementar;
+ *   Observações;Coluna1
+ *
+ * Linha 7+ (dados):
+ *   Campos multiline são delimitados por aspas duplas.
+ *   Separador: ponto-e-vírgula (;)
  */
 
 // ─── Tipos ────────────────────────────────────────────────
@@ -32,6 +52,13 @@ export interface RowValidationError {
   message: string;
 }
 
+/** Metadados extraídos do cabeçalho da planilha (Projeto, Data, Revisão) */
+export interface SpreadsheetMetadata {
+  projeto?: string;
+  data?: string;
+  revisao?: string;
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors: RowValidationError[];
@@ -39,15 +66,21 @@ export interface ValidationResult {
   rows: Record<string, string>[];
   /** Número total de linhas de dados encontradas */
   rowCount: number;
+  /** Metadados extraídos do topo da planilha */
+  metadata: SpreadsheetMetadata;
 }
 
-// ─── Colunas Obrigatórias ─────────────────────────────────
+// ─── Colunas Esperadas ────────────────────────────────────
 
 /**
  * Lista de colunas esperadas na planilha DHA.
  *
  * 🔧 PARA AJUSTAR: adicione/remova entradas aqui.
  * Os nomes são comparados em lowercase/trim com o cabeçalho real.
+ *
+ * Valores reais observados na planilha-modelo:
+ *   Categoria da Severidade → Baixa, Média, Alta, Muito Alta, Média para Alta
+ *   Categoria do Risco      → Baixo, Médio, Alto, Muito Alto
  */
 export const COLUMNS: ColumnDef[] = [
   {
@@ -55,6 +88,12 @@ export const COLUMNS: ColumnDef[] = [
     type: "string",
     required: true,
     label: "Equipamento",
+  },
+  {
+    name: "Descrição do equipamento",
+    type: "string",
+    required: true,
+    label: "Descrição do equipamento",
   },
   {
     name: "Riscos",
@@ -84,14 +123,25 @@ export const COLUMNS: ColumnDef[] = [
     name: "Categoria da Severidade",
     type: "enum",
     required: true,
-    enumValues: ["baixa", "média", "alta", "muito alta"],
+    enumValues: [
+      "baixa",
+      "média",
+      "alta",
+      "muito alta",
+      "média para alta",
+    ],
     label: "Categoria da Severidade",
   },
   {
     name: "Categoria do Risco",
     type: "enum",
     required: true,
-    enumValues: ["baixo", "médio", "alto", "muito alto"],
+    enumValues: [
+      "baixo",
+      "médio",
+      "alto",
+      "muito alto",
+    ],
     label: "Categoria do Risco",
   },
   {
@@ -133,15 +183,58 @@ export const MAX_HEADER_SEARCH_ROWS = 20;
 /** Separador CSV (planilhas brasileiras usam ponto-e-vírgula) */
 export const CSV_DELIMITER = ";";
 
+// ─── Extração de Metadados ────────────────────────────────
+
+/**
+ * Extrai metadados (Projeto, Data, Revisão) das linhas antes do cabeçalho.
+ *
+ * Formato esperado:
+ *   ;;Projeto:;Bunge SFS ;;;;;;;
+ *   ;;Data:;11/11/2025;;;;;;;
+ *   ;;Revisão:;000;;;;;;;
+ */
+export function extractMetadata(
+  rows: string[][],
+  headerIdx: number,
+): SpreadsheetMetadata {
+  const metadata: SpreadsheetMetadata = {};
+
+  for (let i = 0; i < headerIdx; i++) {
+    const row = rows[i];
+    // Busca um padrão "Label:" em qualquer célula, e pega o valor da célula seguinte
+    for (let j = 0; j < row.length - 1; j++) {
+      const cell = row[j]?.trim().toLowerCase() ?? "";
+      const nextValue = row[j + 1]?.trim() ?? "";
+      if (!nextValue) continue;
+
+      if (cell === "projeto:" || cell === "projeto") {
+        metadata.projeto = nextValue;
+      } else if (cell === "data:" || cell === "data") {
+        metadata.data = nextValue;
+      } else if (
+        cell === "revisão:" ||
+        cell === "revisão" ||
+        cell === "revisao:" ||
+        cell === "revisao"
+      ) {
+        metadata.revisao = nextValue;
+      }
+    }
+  }
+
+  return metadata;
+}
+
 // ─── Motor de Validação ───────────────────────────────────
 
 /**
  * Localiza a linha de cabeçalho no array de linhas parseadas.
  * Retorna o índice ou -1 se não encontrado.
+ *
+ * A detecção é feita verificando se TODAS as colunas obrigatórias
+ * estão presentes (case-insensitive, trim).
  */
-export function findHeaderRowIndex(
-  rows: string[][],
-): number {
+export function findHeaderRowIndex(rows: string[][]): number {
   for (let i = 0; i < Math.min(rows.length, MAX_HEADER_SEARCH_ROWS); i++) {
     const normalizedCells = rows[i].map((c) => c.toLowerCase().trim());
     const allFound = REQUIRED_COLUMN_NAMES.every((req) =>
@@ -174,6 +267,13 @@ export function buildColumnIndexMap(
 }
 
 /**
+ * Verifica se uma linha é "vazia" — todas as células em branco ou whitespace.
+ */
+function isEmptyRow(row: string[]): boolean {
+  return row.every((cell) => cell.trim() === "");
+}
+
+/**
  * Valida todas as linhas de dados contra o contrato.
  *
  * @param rawRows — array de arrays de strings (já parseado pelo CSV/XLSX parser)
@@ -196,13 +296,17 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
       ],
       rows: [],
       rowCount: 0,
+      metadata: {},
     };
   }
+
+  // 2. Extrair metadados do topo
+  const metadata = extractMetadata(rawRows, headerIdx);
 
   const headerRow = rawRows[headerIdx];
   const colMap = buildColumnIndexMap(headerRow);
 
-  // 2. Verificar colunas obrigatórias presentes
+  // 3. Verificar colunas obrigatórias presentes
   for (const col of COLUMNS.filter((c) => c.required)) {
     if (!colMap.has(col.name)) {
       errors.push({
@@ -214,16 +318,12 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
   }
 
   if (errors.length > 0) {
-    return { valid: false, errors, rows: [], rowCount: 0 };
+    return { valid: false, errors, rows: [], rowCount: 0, metadata };
   }
 
-  // 3. Extrair linhas de dados (após cabeçalho)
+  // 4. Extrair linhas de dados (após cabeçalho), filtrar vazias
   const dataRows = rawRows.slice(headerIdx + 1);
-
-  // 4. Remover linhas completamente vazias
-  const nonEmptyRows = dataRows.filter((row) =>
-    row.some((cell) => cell.trim() !== ""),
-  );
+  const nonEmptyRows = dataRows.filter((row) => !isEmptyRow(row));
 
   if (nonEmptyRows.length === 0) {
     return {
@@ -237,6 +337,7 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
       ],
       rows: [],
       rowCount: 0,
+      metadata,
     };
   }
 
@@ -252,16 +353,16 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
       ],
       rows: [],
       rowCount: nonEmptyRows.length,
+      metadata,
     };
   }
 
   // 5. Validar cada linha
   const normalizedRows: Record<string, string>[] = [];
-  const seenEquipamentos = new Set<string>();
 
   for (let i = 0; i < nonEmptyRows.length; i++) {
     const row = nonEmptyRows[i];
-    const rowNumber = headerIdx + 2 + i; // 1-based, offset pelo cabeçalho
+    const rowNumber = headerIdx + 2 + i; // 1-based para o usuário
     const normalizedRow: Record<string, string> = {};
 
     for (const col of COLUMNS) {
@@ -281,7 +382,7 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
         continue;
       }
 
-      // 5b. Validação de enum
+      // 5b. Validação de enum (case-insensitive)
       if (col.type === "enum" && col.enumValues && rawValue !== "") {
         const normalizedValue = rawValue.toLowerCase().trim();
         const validValues = col.enumValues.map((v) => v.toLowerCase());
@@ -294,7 +395,7 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
         }
       }
 
-      // 5c. Validação de number
+      // 5c. Validação de number (aceita vírgula decimal brasileira)
       if (col.type === "number" && rawValue !== "") {
         if (isNaN(Number(rawValue.replace(",", ".")))) {
           errors.push({
@@ -305,20 +406,6 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
         }
       }
     }
-
-    // 5d. Detectar equipamentos duplicados (mesma string exata)
-    const equipamento = normalizedRow["Equipamento"] ?? "";
-    if (equipamento && seenEquipamentos.has(equipamento.toLowerCase())) {
-      // Duplicatas de equipamento são PERMITIDAS na planilha DHA
-      // (mesmo equipamento pode ter múltiplos riscos).
-      // Descomente abaixo para proibir:
-      // errors.push({
-      //   row: rowNumber,
-      //   column: "Equipamento",
-      //   message: `Equipamento "${equipamento}" duplicado (já apareceu anteriormente).`,
-      // });
-    }
-    seenEquipamentos.add(equipamento.toLowerCase());
 
     normalizedRows.push(normalizedRow);
   }
@@ -339,5 +426,6 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
     errors: truncatedErrors,
     rows: normalizedRows,
     rowCount: normalizedRows.length,
+    metadata,
   };
 }

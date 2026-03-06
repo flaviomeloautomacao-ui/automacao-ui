@@ -1,12 +1,13 @@
 import { Card, CardHeader, CardBody } from "@/components/ui";
-import { JobsTable } from "@/components/jobs/JobsTable";
+import { JobsTableLive } from "@/components/jobs/JobsTableLive";
 import type { ApiResponse, Job } from "@/lib/types";
 
 /**
  * Server Component — /jobs
  *
  * Busca a lista de jobs pelo route handler e renderiza a tabela.
- * cache: "no-store" garante dados frescos a cada visita.
+ * O client component `JobsTableLive` cuida de auto-refresh enquanto
+ * houver jobs ativos (queued / processing).
  */
 
 async function fetchJobs(): Promise<Job[]> {
@@ -35,7 +36,7 @@ export default async function JobsPage() {
           </p>
         </CardHeader>
         <CardBody>
-          <JobsTable jobs={jobs} />
+          <JobsTableLive initialJobs={jobs} />
         </CardBody>
       </Card>
     </main>

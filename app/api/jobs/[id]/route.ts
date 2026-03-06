@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { updateJobSchema } from "@/lib/validators";
-import type { ApiResponse, Job } from "@/lib/types";
+import type { ApiResponse, JobDetailResponse } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -42,13 +42,23 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       return error("INVALID_ID", "Job ID must be a valid UUID");
     }
 
-    const job: Job | null = await prisma.job.findUnique({ where: { id } });
+    const job = await prisma.job.findUnique({
+      where: { id },
+      include: { steps: { orderBy: { order: "asc" } } },
+    });
 
     if (!job) {
       return error("NOT_FOUND", `Job ${id} not found`, 404);
     }
 
-    return success(job);
+    const { steps, ...jobData } = job;
+
+    const response: JobDetailResponse = {
+      job: jobData,
+      steps: steps.length > 0 ? steps : null,
+    };
+
+    return success(response);
   } catch (err) {
     console.error(`[GET /api/jobs/${(await params).id}]`, err);
     return error("INTERNAL_ERROR", "Failed to fetch job", 500);
@@ -89,7 +99,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return error("NOT_FOUND", `Job ${id} not found`, 404);
     }
 
-    const updated: Job = await prisma.job.update({
+    const updated = await prisma.job.update({
       where: { id },
       data: {
         ...(status !== undefined && { status }),

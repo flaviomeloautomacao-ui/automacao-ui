@@ -40,8 +40,30 @@ model Job {
 
   // Relações
   spreadsheetUpload SpreadsheetUpload?
+  steps             JobStep[]
 
   @@map("jobs")
+}
+
+model JobStep {
+  id           String    @id @default(uuid()) @db.Uuid
+  jobId        String    @map("job_id") @db.Uuid
+  name         String    // ex: "upload_validation", "llm_analysis"
+  label        String    // ex: "Validação do Upload", "Análise LLM"
+  status       JobStatus @default(queued)
+  order        Int       // sequência: 1, 2, 3…
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  errorMessage String?   @map("error_message")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relações
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("job_steps")
 }
 
 model SpreadsheetUpload {
@@ -51,6 +73,7 @@ model SpreadsheetUpload {
   mimeType         String @map("mime_type")
   size             Int    // tamanho em bytes
   rowCount         Int    @map("row_count")
+  metadata         Json?  // { projeto, data, revisao }
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -62,11 +85,13 @@ model SpreadsheetUpload {
 }
 
 model SpreadsheetRow {
-  id             String @id @default(uuid()) @db.Uuid
-  uploadId       String @map("upload_id") @db.Uuid
-  rowIndex       Int    @map("row_index")
-  rawJson        Json   @map("raw_json")
-  normalizedJson Json   @map("normalized_json")
+  id                   String  @id @default(uuid()) @db.Uuid
+  uploadId             String  @map("upload_id") @db.Uuid
+  rowIndex             Int     @map("row_index")
+  equipmentName        String? @map("equipment_name")
+  equipmentDescription String? @map("equipment_description")
+  rawJson              Json    @map("raw_json")
+  normalizedJson       Json    @map("normalized_json")
 
   createdAt DateTime @default(now()) @map("created_at")
 
