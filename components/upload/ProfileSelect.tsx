@@ -3,8 +3,8 @@ import { type SelectHTMLAttributes } from "react";
 /** Perfis de risco disponíveis para seleção */
 const PROFILES = [
   { value: "dust", label: "Poeira (Dust)" },
-  { value: "gas", label: "Gás (Gas)" },
-  { value: "vapors", label: "Vapores (Vapors)" },
+  { value: "gas", label: "Gás/Vapores (Gas/Vapors)" },
+  // { value: "vapors", label: "Vapores (Vapors)" },
 ] as const;
 
 interface ProfileSelectProps

@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSupabaseAdmin } from "@/lib/supabaseServer";
+import { getSupabaseAdmin, REPORTS_BUCKET } from "@/lib/supabaseServer";
 import type { ApiResponse } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -36,7 +36,7 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Nome do bucket onde os PDFs são armazenados */
-const PDF_BUCKET = "reports";
+const PDF_BUCKET = REPORTS_BUCKET;
 
 /** Tempo de expiração da signed URL em segundos */
 const SIGNED_URL_EXPIRY_SECONDS = 60;

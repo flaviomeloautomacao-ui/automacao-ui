@@ -164,6 +164,39 @@ export const COLUMNS: ColumnDef[] = [
   },
 ];
 
+// ─── Normalização de Chaves para Python ───────────────────
+
+/**
+ * Mapeia os nomes originais das colunas em português (como aparecem na planilha)
+ * para chaves snake_case sem acentos, compatíveis com o backend Python.
+ */
+export const COLUMN_NORMALIZE_MAP: Record<string, string> = {
+  "Equipamento": "equipamento",
+  "Descrição do equipamento": "descricao_equipamento",
+  "Riscos": "riscos",
+  "Perigo": "perigo",
+  "Causas Possíveis": "causas",
+  "Consequências": "consequencias",
+  "Categoria da Severidade": "categoria_severidade",
+  "Categoria do Risco": "categoria_risco",
+  "Medidas Preventivas Existentes": "medidas_existentes",
+  "Medidas Preventivas a Implementar": "medidas_implementar",
+  "Observações": "observacoes",
+};
+
+/**
+ * Normaliza um row da planilha: converte chaves em português para snake_case.
+ * Chaves não mapeadas são mantidas como estão.
+ */
+export function normalizeRow(row: Record<string, string>): Record<string, string> {
+  const normalized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(row)) {
+    const normalizedKey = COLUMN_NORMALIZE_MAP[key] || key;
+    normalized[normalizedKey] = value;
+  }
+  return normalized;
+}
+
 /** Nomes normalizados (lowercase + trim) das colunas obrigatórias */
 export const REQUIRED_COLUMN_NAMES = COLUMNS
   .filter((c) => c.required)

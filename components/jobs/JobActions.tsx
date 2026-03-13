@@ -40,6 +40,14 @@ export function JobActions({ jobId, status }: JobActionsProps) {
         </Button>
       </Link>
 
+      {status === "awaiting_complement" && (
+        <Link href={`/jobs/${jobId}/complement`}>
+          <Button variant="primary" size="sm">
+            Completar dados
+          </Button>
+        </Link>
+      )}
+
       {status === "done" && (
         <Button
           variant="primary"

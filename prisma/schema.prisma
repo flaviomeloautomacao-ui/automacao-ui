@@ -14,6 +14,7 @@ datasource db {
 
 enum JobStatus {
   queued
+  awaiting_complement
   processing
   done
   error
@@ -47,6 +48,7 @@ model Job {
   // Relações
   spreadsheetUpload SpreadsheetUpload?
   steps             JobStep[]
+  report            Report?
 
   @@map("jobs")
 }
@@ -106,6 +108,78 @@ model SpreadsheetRow {
 
   @@index([uploadId])
   @@map("spreadsheet_rows")
+}
+
+// ─── Report & Equipments ──────────────────────────────────
+
+model Report {
+  id        String   @id @default(uuid()) @db.Uuid
+  jobId     String   @unique @map("job_id") @db.Uuid
+
+  // Dados gerais do relatório (capa)
+  razaoSocial          String?   @map("razao_social")
+  cnpj                 String?
+  site                 String?
+  endereco             String?
+  localVistoriado      String?   @map("local_vistoriado")
+  dataAvaliacao        DateTime? @map("data_avaliacao")
+  contrato             String?
+  elaboracao           String?
+  responsavel          String?
+  registroProfissional String?   @map("registro_profissional")
+  observacoesGerais    String?   @map("observacoes_gerais") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relações
+  job        Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  equipments ReportEquipment[]
+
+  @@map("reports")
+}
+
+model ReportEquipment {
+  id       String @id @default(uuid()) @db.Uuid
+  reportId String @map("report_id") @db.Uuid
+
+  equipmentName        String  @map("equipment_name")
+  equipmentDescription String? @map("equipment_description")
+  orderIndex           Int     @map("order_index")
+
+  // Dados extras (complementação do usuário)
+  localInstalacao   String? @map("local_instalacao")
+  funcaoOperacional String? @map("funcao_operacional")
+  observacoesExtras String? @map("observacoes_extras") @db.Text
+  extraJson         Json?   @map("extra_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relações
+  report Report           @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  images EquipmentImage[]
+
+  @@index([reportId])
+  @@map("report_equipments")
+}
+
+model EquipmentImage {
+  id          String @id @default(uuid()) @db.Uuid
+  equipmentId String @map("equipment_id") @db.Uuid
+
+  publicId  String @map("public_id")
+  secureUrl String @map("secure_url")
+  width     Int?
+  height    Int?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relações
+  equipment ReportEquipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@index([equipmentId])
+  @@map("equipment_images")
 }
 
 // ─── Tabelas pré-existentes (Supabase) ────────────────────

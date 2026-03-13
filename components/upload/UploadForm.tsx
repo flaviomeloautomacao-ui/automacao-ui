@@ -84,7 +84,7 @@ export function UploadForm() {
         return;
       }
 
-      router.push(`/jobs/${json.data.jobId}`);
+      router.push(json.data.redirectTo || `/jobs/${json.data.jobId}/complement`);
     } catch {
       setApiError("Erro inesperado ao criar o job. Tente novamente.");
     } finally {

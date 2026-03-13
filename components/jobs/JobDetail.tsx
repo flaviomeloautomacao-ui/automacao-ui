@@ -186,6 +186,41 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
             </section>
           )}
 
+          {/* Awaiting Complement Banner */}
+          {job.status === "awaiting_complement" && (
+            <div
+              style={{
+                padding: "0.875rem 1rem",
+                borderRadius: "0.5rem",
+                backgroundColor: "#fffbeb",
+                border: "1px solid #fde68a",
+              }}
+            >
+              <p
+                style={{
+                  fontWeight: 600,
+                  color: "#92400e",
+                  fontSize: "0.875rem",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                Relatório aguardando complementação.
+              </p>
+              <p style={{ fontSize: "0.8125rem", color: "#a16207" }}>
+                Preencha os dados complementares para gerar o relatório.
+              </p>
+              <Link href={`/jobs/${job.id}/complement`}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  style={{ marginTop: "0.5rem" }}
+                >
+                  Completar dados
+                </Button>
+              </Link>
+            </div>
+          )}
+
           {/* Done Banner */}
           {job.status === "done" && (
             <div
@@ -344,6 +379,11 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
           <Link href="/jobs">
             <Button variant="secondary">Voltar à lista</Button>
           </Link>
+          {job.status === "awaiting_complement" && (
+            <Link href={`/jobs/${job.id}/complement`}>
+              <Button variant="primary">Completar dados</Button>
+            </Link>
+          )}
           {job.status === "done" && (
             <Button
               variant="primary"

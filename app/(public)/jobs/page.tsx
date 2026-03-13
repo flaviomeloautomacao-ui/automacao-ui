@@ -1,30 +1,23 @@
+import { prisma } from "@/lib/prisma";
 import { Card, CardHeader, CardBody } from "@/components/ui";
 import { JobsTableLive } from "@/components/jobs/JobsTableLive";
-import type { ApiResponse, Job } from "@/lib/types";
 
 /**
  * Server Component — /jobs
  *
- * Busca a lista de jobs pelo route handler e renderiza a tabela.
+ * Busca a lista de jobs diretamente via Prisma e renderiza a tabela.
  * O client component `JobsTableLive` cuida de auto-refresh enquanto
  * houver jobs ativos (queued / processing).
  */
 
-async function fetchJobs(): Promise<Job[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-
-  const res = await fetch(`${baseUrl}/api/jobs?limit=50`, {
-    cache: "no-store",
+export default async function JobsPage() {
+  const jobs = await prisma.job.findMany({
+    take: 50,
+    orderBy: { createdAt: "desc" },
   });
 
-  if (!res.ok) return [];
-
-  const json: ApiResponse<Job[]> = await res.json();
-  return json.error ? [] : json.data;
-}
-
-export default async function JobsPage() {
-  const jobs = await fetchJobs();
+  // Serialize dates for client component
+  const serializedJobs = JSON.parse(JSON.stringify(jobs));
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1rem" }}>
@@ -36,7 +29,7 @@ export default async function JobsPage() {
           </p>
         </CardHeader>
         <CardBody>
-          <JobsTableLive initialJobs={jobs} />
+          <JobsTableLive initialJobs={serializedJobs} />
         </CardBody>
       </Card>
     </main>

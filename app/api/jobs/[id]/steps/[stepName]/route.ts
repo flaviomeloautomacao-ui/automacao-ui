@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { updateStepSchema } from "@/lib/validators";
+import { PIPELINE_STEPS } from "@/lib/constants";
 import type { ApiResponse } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -40,6 +41,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     if (!UUID_RE.test(id)) {
       return error("INVALID_ID", "Job ID must be a valid UUID");
+    }
+
+    // Validate step name against known pipeline steps
+    const validStepNames = PIPELINE_STEPS.map((s) => s.name);
+    if (!validStepNames.includes(stepName as typeof validStepNames[number])) {
+      return error(
+        "INVALID_STEP",
+        `Step "${stepName}" is not valid. Expected one of: ${validStepNames.join(", ")}`,
+      );
     }
 
     let body: unknown;

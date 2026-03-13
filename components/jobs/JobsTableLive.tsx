@@ -10,7 +10,7 @@ const REFRESH_INTERVAL_MS = 3_000;
 /** Máximo de ciclos de refresh para evitar loop infinito */
 const MAX_REFRESH_CYCLES = 600; // ~30 min
 
-const ACTIVE_STATUSES = new Set(["queued", "processing"]);
+const ACTIVE_STATUSES = new Set(["queued", "processing", "awaiting_complement"]);
 
 function hasActiveJobs(jobs: Job[]): boolean {
   return jobs.some((j) => ACTIVE_STATUSES.has(j.status));

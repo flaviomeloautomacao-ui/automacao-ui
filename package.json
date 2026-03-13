@@ -14,15 +14,18 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
     "@supabase/supabase-js": "^2.98.0",
+    "cloudinary": "^2.9.0",
     "csv-parse": "^6.1.0",
     "next": "16.1.6",
     "pg": "^8.19.0",
     "prisma": "^7.4.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-hook-form": "^7.71.2",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },

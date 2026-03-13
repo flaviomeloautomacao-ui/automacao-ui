@@ -25,6 +25,10 @@ function createPrismaClient(): PrismaClient {
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,
+    transactionOptions: {
+      maxWait: 10000,  // max time to acquire a connection
+      timeout: 30000,  // max time for the transaction to complete
+    },
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]

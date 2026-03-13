@@ -2,18 +2,19 @@
  * Route Handler — /api/jobs
  *
  * GET  → Lista jobs (limit/offset via query string)
- * POST → Recebe planilha via FormData, valida, persiste e clona no Storage
+ * POST → Recebe planilha via FormData, valida, persiste e cria Report vazio
+ *        para complementação. NÃO dispara processamento.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { listJobsQuerySchema } from "@/lib/validators";
 import { parseSpreadsheet } from "@/lib/spreadsheetParser";
-import { validateSpreadsheet } from "@/lib/spreadsheetContract";
+import { validateSpreadsheet, normalizeRow } from "@/lib/spreadsheetContract";
 import { getArchiveExpirationDate, formatDatePath } from "@/lib/date";
 import { getSupabaseAdmin, STORAGE_BUCKET, ensureStorageBucket } from "@/lib/supabaseServer";
-import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS, PYTHON_SERVICE_URL, PIPELINE_STEPS } from "@/lib/constants";
-import type { ApiResponse, CreateJobResponse } from "@/lib/types";
+import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS, PIPELINE_STEPS } from "@/lib/constants";
+import type { ApiResponse } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -145,19 +146,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 7. Persistir em transação Prisma (Job + Rows + Steps)
-    const now = new Date();
-    const archiveExpiresAt = getArchiveExpirationDate(now);
-
+    // 7. Persistir tudo em transação Prisma
+    //    Job + Upload + Rows + Steps + Report + ReportEquipments
     const result = await prisma.$transaction(async (tx) => {
-      // 7a. Criar Job
+      // 7a. Criar Job com status awaiting_complement
       const job = await tx.job.create({
         data: {
           filename: originalFilename,
           profile,
-          status: "queued",
+          status: "awaiting_complement",
           progress: 0,
-          currentStep: "Aguardando processamento",
+          currentStep: "Aguardando complementação",
           rowCount: validation.rowCount,
         },
       });
@@ -184,7 +183,7 @@ export async function POST(request: NextRequest) {
             equipmentName: row["Equipamento"] || null,
             equipmentDescription: row["Descrição do equipamento"] || null,
             rawJson: row,
-            normalizedJson: row,
+            normalizedJson: normalizeRow(row),
           })),
         });
       }
@@ -200,15 +199,52 @@ export async function POST(request: NextRequest) {
         })),
       });
 
-      return { job, upload };
+      // 7e. Criar Report vazio (será preenchido na complementação)
+      const report = await tx.report.create({
+        data: { jobId: job.id },
+      });
+
+      // 7f. Agrupar equipamentos por nome e criar ReportEquipments
+      const equipmentGroups = new Map<
+        string,
+        { name: string; description: string | null }
+      >();
+
+      for (const row of validation.rows) {
+        const name = (row["Equipamento"] ?? "").trim();
+        if (!name) continue;
+        if (!equipmentGroups.has(name)) {
+          equipmentGroups.set(name, {
+            name,
+            description:
+              (row["Descrição do equipamento"] ?? "").trim() || null,
+          });
+        }
+      }
+
+      const equipmentEntries = Array.from(equipmentGroups.values());
+
+      if (equipmentEntries.length > 0) {
+        await tx.reportEquipment.createMany({
+          data: equipmentEntries.map((eq, idx) => ({
+            reportId: report.id,
+            equipmentName: eq.name,
+            equipmentDescription: eq.description,
+            orderIndex: idx + 1,
+          })),
+        });
+      }
+
+      return { job, report, equipmentCount: equipmentEntries.length };
     });
 
     // 8. Upload do clone no Supabase Storage (fora da transação)
     const { job } = result;
+    const now = new Date();
+    const archiveExpiresAt = getArchiveExpirationDate(now);
     const storagePath = `${job.id}/${formatDatePath(now)}/${originalFilename}`;
 
     try {
-      // Garantir que o bucket existe antes do upload
       await ensureStorageBucket();
 
       const { error: storageError } = await getSupabaseAdmin().storage
@@ -229,8 +265,8 @@ export async function POST(request: NextRequest) {
           data: {
             archivePath: storagePath,
             archiveExpiresAt,
-            progress: 10,
-            currentStep: "Upload concluído",
+            progress: 5,
+            currentStep: "Upload concluído — aguardando complementação",
           },
         }),
         prisma.jobStep.updateMany({
@@ -240,62 +276,14 @@ export async function POST(request: NextRequest) {
       ]);
     } catch (storageErr) {
       console.error("[POST /api/jobs] Storage upload failed:", storageErr);
-
-      // Marcar Job como error, mas NÃO reverter os dados
-      await prisma.job.update({
-        where: { id: job.id },
-        data: {
-          status: "error",
-          errorCode: "STORAGE_UPLOAD_FAILED",
-          errorMessage: `Falha ao salvar arquivo no storage: ${storageErr instanceof Error ? storageErr.message : "Erro desconhecido"}`,
-        },
-      });
-
-      // Ainda retorna sucesso parcial — Job criado mas sem arquivo
-      return success(
-        {
-          jobId: job.id,
-          status: job.status,
-          warning: "Job criado, mas o upload do arquivo no storage falhou. O job foi marcado como error.",
-        },
-        201,
-      );
+      // Não falha o request — job + report já foram criados
     }
 
-    // 9. Disparar processamento no Python Service (fire-and-forget)
-    //    O front-end não espera — redireciona imediatamente para /jobs/{jobId}
-    try {
-      const pyForm = new FormData();
-      pyForm.append("file", new Blob([buffer], { type: file.type || "application/octet-stream" }), originalFilename);
-      pyForm.append("profile", profile);
-      pyForm.append("job_id", job.id);
-
-      // Fire-and-forget: NÃO usamos await aqui
-      fetch(`${PYTHON_SERVICE_URL}/process`, {
-        method: "POST",
-        body: pyForm,
-      }).catch((err) => {
-        console.error("[POST /api/jobs] Fire-and-forget to Python failed:", err);
-        // Atualizar job como error de forma assíncrona
-        prisma.job.update({
-          where: { id: job.id },
-          data: {
-            status: "error",
-            errorCode: "PYTHON_SERVICE_UNREACHABLE",
-            errorMessage: `Falha ao conectar com o serviço de geração: ${err instanceof Error ? err.message : "Erro desconhecido"}`,
-          },
-        }).catch(console.error);
-      });
-    } catch (pyErr) {
-      console.error("[POST /api/jobs] Python Service dispatch failed:", pyErr);
-      // Não falha o request — o job foi criado com sucesso
-    }
-
-    // 10. Retorno imediato — front redireciona para /jobs/{jobId}
+    // 9. Retorno — front redireciona para complementação
     return success(
       {
         jobId: job.id,
-        status: "queued" as const,
+        redirectTo: `/jobs/${job.id}/complement`,
       },
       201,
     );

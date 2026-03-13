@@ -58,8 +58,7 @@ export interface UpdateJobPayload {
 // ─── Payloads de saída (POST /api/jobs) ───────────────────
 export interface CreateJobResponse {
   jobId: string;
-  status: string;
-  warning?: string;
+  redirectTo: string;
 }
 
 // ─── Resposta do Python Service (POST /uploads) ───────

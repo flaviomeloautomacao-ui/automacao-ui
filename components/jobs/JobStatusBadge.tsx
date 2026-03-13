@@ -1,12 +1,13 @@
 import { Badge } from "@/components/ui";
 
-type JobStatus = "queued" | "processing" | "done" | "error";
+type JobStatus = "queued" | "awaiting_complement" | "processing" | "done" | "error";
 
 const STATUS_MAP: Record<
   JobStatus,
-  { label: string; variant: "info" | "warning" | "success" | "error" }
+  { label: string; variant: "info" | "warning" | "success" | "error" | "neutral" }
 > = {
   queued: { label: "Na fila", variant: "info" },
+  awaiting_complement: { label: "Aguardando complementação", variant: "warning" },
   processing: { label: "Processando", variant: "warning" },
   done: { label: "Concluído", variant: "success" },
   error: { label: "Erro", variant: "error" },

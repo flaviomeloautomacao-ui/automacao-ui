@@ -50,6 +50,9 @@ export function getSupabaseAdmin(): SupabaseClient {
 /** Nome do bucket no Supabase Storage para arquivos de planilha */
 export const STORAGE_BUCKET = "spreadsheets-archive";
 
+/** Nome do bucket no Supabase Storage para relatórios PDF gerados */
+export const REPORTS_BUCKET = process.env.REPORTS_BUCKET || "reports";
+
 /**
  * Garante que o bucket de storage existe, criando-o se necessário.
  * Chamado uma vez antes do primeiro upload.

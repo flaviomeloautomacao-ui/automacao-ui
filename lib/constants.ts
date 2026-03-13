@@ -27,4 +27,4 @@ export const PIPELINE_STEPS = [
 ] as const;
 
 /** Status considerados finais (não requerem polling) */
-export const TERMINAL_STATUSES = new Set(["done", "error"]);
+export const TERMINAL_STATUSES = new Set(["done", "error", "awaiting_complement"]);
