@@ -1,22 +1,21 @@
 import { UploadForm } from "@/components/upload/UploadForm";
 
 export const metadata = {
-  title: "Upload — Automação DHA",
+  title: "Novo Laudo — DHA Automação",
 };
 
 export default function UploadPage() {
   return (
-    <main style={{ maxWidth: 560, margin: "0 auto", padding: "2rem 1rem" }}>
-      <h1
-        style={{
-          fontSize: "1.75rem",
-          fontWeight: 700,
-          marginBottom: "1.5rem",
-        }}
-      >
-        Criar Laudo
-      </h1>
+    <div>
+      <div style={{ marginBottom: "var(--space-6)" }}>
+        <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)", marginBottom: "var(--space-2)" }}>
+          Novo Laudo Técnico
+        </h1>
+        <p style={{ fontSize: "var(--text-base)", color: "var(--text-secondary)" }}>
+          Selecione o perfil de risco e faça upload da planilha para iniciar.
+        </p>
+      </div>
       <UploadForm />
-    </main>
+    </div>
   );
 }

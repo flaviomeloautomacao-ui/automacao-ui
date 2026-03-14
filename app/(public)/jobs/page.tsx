@@ -1,14 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { Card, CardHeader, CardBody } from "@/components/ui";
 import { JobsTableLive } from "@/components/jobs/JobsTableLive";
+import Link from "next/link";
+import { Button } from "@/components/ui";
 
-/**
- * Server Component — /jobs
- *
- * Busca a lista de jobs diretamente via Prisma e renderiza a tabela.
- * O client component `JobsTableLive` cuida de auto-refresh enquanto
- * houver jobs ativos (queued / processing).
- */
+export const metadata = { title: "Histórico — DHA Automação" };
 
 export default async function JobsPage() {
   const jobs = await prisma.job.findMany({
@@ -16,22 +11,33 @@ export default async function JobsPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  // Serialize dates for client component
   const serializedJobs = JSON.parse(JSON.stringify(jobs));
 
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1rem" }}>
-      <Card>
-        <CardHeader>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>Jobs</h1>
-          <p style={{ color: "#6b7280", marginTop: "0.25rem" }}>
+    <div>
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: "var(--space-6)",
+        flexWrap: "wrap",
+        gap: "var(--space-4)",
+      }}>
+        <div>
+          <h1 style={{ fontSize: "var(--text-2xl)", fontWeight: 700, color: "var(--text-primary)" }}>
+            Histórico de Laudos
+          </h1>
+          <p style={{ fontSize: "var(--text-base)", color: "var(--text-secondary)", marginTop: "var(--space-1)" }}>
             Acompanhe o status dos seus processamentos.
           </p>
-        </CardHeader>
-        <CardBody>
-          <JobsTableLive initialJobs={serializedJobs} />
-        </CardBody>
-      </Card>
-    </main>
+        </div>
+        <Link href="/upload">
+          <Button variant="primary">
+            + Novo Laudo
+          </Button>
+        </Link>
+      </div>
+      <JobsTableLive initialJobs={serializedJobs} />
+    </div>
   );
 }

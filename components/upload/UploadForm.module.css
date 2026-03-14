@@ -1,0 +1,235 @@
+/* ═══════════════════════════════════════════════
+   UploadForm — Estilização moderna
+   ═══════════════════════════════════════════════ */
+
+.form {
+  max-width: 600px;
+}
+
+/* ── Profile Cards ── */
+
+.profileSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.profileLabel {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.profileCards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+@media (max-width: 480px) {
+  .profileCards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profileCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--bg-primary);
+}
+
+.profileCard:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-secondary);
+}
+
+.profileCard.selected {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.profileIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.profileIcon.dust {
+  background: var(--warning-light);
+}
+
+.profileIcon.gas {
+  background: var(--info-light);
+}
+
+.profileName {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.profileDesc {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.profileError {
+  font-size: var(--text-xs);
+  color: var(--error);
+  margin-top: var(--space-1);
+}
+
+/* ── Dropzone ── */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-4);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+  margin-bottom: var(--space-5);
+}
+
+.dropzone:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.dropzone.active {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.dropzone.hasFile {
+  border-color: var(--success);
+  background: var(--success-light);
+  border-style: solid;
+}
+
+.dropzone.hasError {
+  border-color: var(--error);
+  background: var(--error-light);
+}
+
+.dropzoneIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+
+.dropzone:hover .dropzoneIcon,
+.dropzone.active .dropzoneIcon {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.dropzone.hasFile .dropzoneIcon {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.dropzoneIcon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.dropzoneTitle {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.dropzoneTitle strong {
+  color: var(--accent);
+}
+
+.dropzoneSub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.fileInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--success-text);
+  font-weight: 500;
+}
+
+.fileInfo svg {
+  width: 16px;
+  height: 16px;
+  color: var(--success);
+}
+
+.dropzoneError {
+  font-size: var(--text-xs);
+  color: var(--error);
+}
+
+/* ── Error Banner ── */
+
+.errorBanner {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background-color: var(--error-light);
+  color: var(--error-text);
+  font-size: var(--text-base);
+  border: 1px solid var(--error-border);
+  margin-bottom: var(--space-5);
+}
+
+.errorBanner p {
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+
+.errorList {
+  list-style: disc;
+  padding-left: var(--space-5);
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.errorList li {
+  margin-bottom: var(--space-1);
+}
+
+/* ── Actions ── */
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}

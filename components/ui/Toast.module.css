@@ -1,11 +1,11 @@
 .container {
   position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
+  bottom: var(--space-6);
+  right: var(--space-6);
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
   pointer-events: none;
 }
 
@@ -13,14 +13,15 @@
   pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-base);
+  box-shadow: var(--shadow-lg);
   animation: slideIn 0.25s ease forwards;
-  min-width: 260px;
-  max-width: 380px;
+  min-width: 280px;
+  max-width: 400px;
+  backdrop-filter: blur(8px);
 }
 
 .toast.exiting {
@@ -28,23 +29,27 @@
 }
 
 .info {
-  background-color: #dbeafe;
-  color: #1e40af;
+  background-color: var(--info-light);
+  color: var(--info-text);
+  border: 1px solid var(--info-border);
 }
 
 .success {
-  background-color: #dcfce7;
-  color: #166534;
+  background-color: var(--success-light);
+  color: var(--success-text);
+  border: 1px solid var(--success-border);
 }
 
 .warning {
-  background-color: #fef9c3;
-  color: #854d0e;
+  background-color: var(--warning-light);
+  color: var(--warning-text);
+  border: 1px solid var(--warning-border);
 }
 
 .error {
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: var(--error-light);
+  color: var(--error-text);
+  border: 1px solid var(--error-border);
 }
 
 .message {
@@ -59,7 +64,8 @@
   line-height: 1;
   color: inherit;
   opacity: 0.6;
-  padding: 0.125rem;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
 }
 
 .close:hover {
@@ -91,5 +97,18 @@
   to {
     opacity: 0;
     transform: translateX(1rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: var(--space-4);
+  }
+
+  .toast {
+    min-width: unset;
+    max-width: unset;
   }
 }

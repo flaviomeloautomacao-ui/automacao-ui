@@ -82,12 +82,12 @@ export function JobsTableLive({ initialJobs }: JobsTableLiveProps) {
       {refreshing && (
         <p
           style={{
-            fontSize: "0.8125rem",
-            color: "#6b7280",
-            marginBottom: "0.5rem",
+            fontSize: "var(--text-sm)",
+            color: "var(--text-muted)",
+            marginBottom: "var(--space-2)",
           }}
         >
-          Atualizando automaticamente...
+          ⟳ Atualizando automaticamente...
         </p>
       )}
       <JobsTable jobs={jobs} />

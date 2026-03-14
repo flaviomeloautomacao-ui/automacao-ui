@@ -6,6 +6,7 @@ import { JobStatusBadge } from "@/components/jobs/JobStatusBadge";
 import type { ApiResponse, Job, JobStep, JobDetailResponse } from "@/lib/types";
 import { POLL_INTERVAL_MS, MAX_POLL_CYCLES, TERMINAL_STATUSES } from "@/lib/constants";
 import Link from "next/link";
+import styles from "./JobDetail.module.css";
 
 interface DownloadResponse {
   url: string;
@@ -141,10 +142,10 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
         currentStep: "Reiniciando processamento…",
         errorCode: null,
         errorMessage: null,
-        startedAt: new Date().toISOString(),
+        startedAt: new Date(),
         finishedAt: null,
         pdfPath: null,
-      }));
+      } as Job));
 
       // Reset all steps to queued
       setSteps((prev) =>
@@ -176,27 +177,21 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
   return (
     <Card>
       <CardHeader>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>
+        <div className={styles.header}>
+          <h1 className={styles.title}>
             Job: {job.filename ?? job.id.slice(0, 8)}
           </h1>
           <JobStatusBadge status={job.status} />
         </div>
         {polling && (
-          <p
-            style={{
-              color: "#6b7280",
-              fontSize: "0.8125rem",
-              marginTop: "0.25rem",
-            }}
-          >
+          <p className={styles.pollingHint}>
             Atualizando automaticamente a cada {POLL_INTERVAL_MS / 1000}s...
           </p>
         )}
       </CardHeader>
 
       <CardBody>
-        <div style={{ display: "grid", gap: "1.25rem" }}>
+        <div className={styles.body}>
           {/* Progress */}
           <Progress
             value={job.progress ?? 0}
@@ -207,91 +202,43 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
 
           {/* Current Step Label */}
           {job.currentStep && !TERMINAL_STATUSES.has(job.status) && (
-            <p
-              style={{
-                fontSize: "0.875rem",
-                color: "#4b5563",
-                fontStyle: "italic",
-                marginTop: "-0.5rem",
-              }}
-            >
-              {job.currentStep}
-            </p>
+            <p className={styles.currentStep}>{job.currentStep}</p>
           )}
 
           {/* Pipeline Steps */}
           {steps && steps.length > 0 && (
             <section>
-              <h2
-                style={{
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  color: "#374151",
-                  marginBottom: "0.75rem",
-                }}
-              >
-                Etapas do Pipeline
-              </h2>
+              <h2 className={styles.sectionTitle}>Etapas do Pipeline</h2>
               <Stepper steps={steps} />
             </section>
           )}
 
           {/* Awaiting Complement Banner */}
           {job.status === "awaiting_complement" && (
-            <div
-              style={{
-                padding: "0.875rem 1rem",
-                borderRadius: "0.5rem",
-                backgroundColor: "#fffbeb",
-                border: "1px solid #fde68a",
-              }}
-            >
-              <p
-                style={{
-                  fontWeight: 600,
-                  color: "#92400e",
-                  fontSize: "0.875rem",
-                  marginBottom: "0.25rem",
-                }}
-              >
+            <div className={styles.bannerWarning}>
+              <p className={styles.bannerTitle}>
                 Relatório aguardando complementação.
               </p>
-              <p style={{ fontSize: "0.8125rem", color: "#a16207" }}>
+              <p className={styles.bannerText}>
                 Preencha os dados complementares para gerar o relatório.
               </p>
-              <Link href={`/jobs/${job.id}/complement`}>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  style={{ marginTop: "0.5rem" }}
-                >
-                  Completar dados
-                </Button>
-              </Link>
+              <div className={styles.bannerAction}>
+                <Link href={`/jobs/${job.id}/complement`}>
+                  <Button variant="primary" size="sm">
+                    Completar dados
+                  </Button>
+                </Link>
+              </div>
             </div>
           )}
 
           {/* Done Banner */}
           {job.status === "done" && (
-            <div
-              style={{
-                padding: "0.875rem 1rem",
-                borderRadius: "0.5rem",
-                backgroundColor: "#f0fdf4",
-                border: "1px solid #bbf7d0",
-              }}
-            >
-              <p
-                style={{
-                  fontWeight: 600,
-                  color: "#166534",
-                  fontSize: "0.875rem",
-                  marginBottom: "0.25rem",
-                }}
-              >
+            <div className={styles.bannerSuccess}>
+              <p className={styles.bannerTitle}>
                 Laudo concluído com sucesso!
               </p>
-              <p style={{ fontSize: "0.8125rem", color: "#15803d" }}>
+              <p className={styles.bannerText}>
                 O PDF está pronto para download.
               </p>
             </div>
@@ -299,27 +246,13 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
 
           {/* Timeout / Stale Banner */}
           {(timedOut || isStale) && !TERMINAL_STATUSES.has(job.status) && (
-            <div
-              style={{
-                padding: "0.875rem 1rem",
-                borderRadius: "0.5rem",
-                backgroundColor: "#fffbeb",
-                border: "1px solid #fde68a",
-              }}
-            >
-              <p
-                style={{
-                  fontWeight: 600,
-                  color: "#92400e",
-                  fontSize: "0.875rem",
-                  marginBottom: "0.25rem",
-                }}
-              >
+            <div className={styles.bannerWarning}>
+              <p className={styles.bannerTitle}>
                 {timedOut
                   ? "Tempo de acompanhamento excedido"
                   : "Job sem atualização há mais de 5 minutos"}
               </p>
-              <p style={{ fontSize: "0.8125rem", color: "#a16207" }}>
+              <p className={styles.bannerText}>
                 O processamento pode ter falhado no servidor. Verifique os logs
                 do serviço Python ou tente reenviar o arquivo.
               </p>
@@ -329,17 +262,7 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
                   pollCount.current = 0;
                   setPolling(true);
                 }}
-                style={{
-                  marginTop: "0.5rem",
-                  padding: "0.375rem 0.75rem",
-                  fontSize: "0.8125rem",
-                  fontWeight: 500,
-                  color: "#92400e",
-                  backgroundColor: "#fef3c7",
-                  border: "1px solid #fde68a",
-                  borderRadius: "0.375rem",
-                  cursor: "pointer",
-                }}
+                className={styles.bannerRetryBtn}
               >
                 Tentar novamente
               </button>
@@ -348,85 +271,59 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
 
           {/* Error Banner */}
           {job.status === "error" && (
-            <div
-              style={{
-                padding: "0.875rem 1rem",
-                borderRadius: "0.5rem",
-                backgroundColor: "#fef2f2",
-                border: "1px solid #fecaca",
-              }}
-            >
-              <p
-                style={{
-                  fontWeight: 600,
-                  color: "#991b1b",
-                  fontSize: "0.875rem",
-                  marginBottom: "0.25rem",
-                }}
-              >
+            <div className={styles.bannerError}>
+              <p className={styles.bannerTitle}>
                 Ocorreu um erro no processamento
               </p>
               {job.errorCode && (
-                <p style={{ fontSize: "0.8125rem", color: "#b91c1c" }}>
-                  Código: {job.errorCode}
-                </p>
+                <p className={styles.bannerText}>Código: {job.errorCode}</p>
               )}
               {job.errorMessage && (
-                <p style={{ fontSize: "0.8125rem", color: "#b91c1c" }}>
-                  {job.errorMessage}
-                </p>
+                <p className={styles.bannerText}>{job.errorMessage}</p>
               )}
               {!job.errorMessage && !job.errorCode && (
-                <p style={{ fontSize: "0.8125rem", color: "#b91c1c" }}>
+                <p className={styles.bannerText}>
                   Erro desconhecido. Entre em contato com o suporte.
                 </p>
               )}
-              <Button
-                variant="primary"
-                size="sm"
-                style={{ marginTop: "0.5rem" }}
-                onClick={handleRetry}
-                disabled={retrying}
-              >
-                {retrying ? "Reenviando…" : "Tentar Novamente"}
-              </Button>
+              <div className={styles.bannerAction}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleRetry}
+                  disabled={retrying}
+                >
+                  {retrying ? "Reenviando…" : "Tentar Novamente"}
+                </Button>
+              </div>
             </div>
           )}
 
           {/* Metadata */}
-          <dl
-            style={{
-              display: "grid",
-              gridTemplateColumns: "auto 1fr",
-              gap: "0.5rem 1.5rem",
-              fontSize: "0.875rem",
-            }}
-          >
-            <dt style={{ fontWeight: 600, color: "#6b7280" }}>ID</dt>
-            <dd style={{ fontFamily: "var(--font-geist-mono, monospace)", fontSize: "0.8125rem" }}>
-              {job.id}
-            </dd>
+          <dl className={styles.metadata}>
+            <dt className={styles.metaLabel}>ID</dt>
+            <dd className={styles.metaValueMono}>{job.id}</dd>
 
-            <dt style={{ fontWeight: 600, color: "#6b7280" }}>Perfil</dt>
-            <dd>{job.profile}</dd>
+            <dt className={styles.metaLabel}>Perfil</dt>
+            <dd className={styles.metaValue}>{job.profile}</dd>
 
             {job.rowCount != null && (
               <>
-                <dt style={{ fontWeight: 600, color: "#6b7280" }}>Linhas</dt>
-                <dd>{job.rowCount}</dd>
+                <dt className={styles.metaLabel}>Linhas</dt>
+                <dd className={styles.metaValue}>{job.rowCount}</dd>
               </>
             )}
 
-            <dt style={{ fontWeight: 600, color: "#6b7280" }}>Criado em</dt>
-            <dd>{formatDate(job.createdAt)}</dd>
+            <dt className={styles.metaLabel}>Criado em</dt>
+            <dd className={styles.metaValue}>{formatDate(job.createdAt)}</dd>
 
-            <dt style={{ fontWeight: 600, color: "#6b7280" }}>Atualizado em</dt>
-            <dd>{formatDate(job.updatedAt)}</dd>
+            <dt className={styles.metaLabel}>Atualizado em</dt>
+            <dd className={styles.metaValue}>{formatDate(job.updatedAt)}</dd>
 
             {job.finishedAt && (
               <>
-                <dt style={{ fontWeight: 600, color: "#6b7280" }}>Finalizado em</dt>
-                <dd>{formatDate(job.finishedAt)}</dd>
+                <dt className={styles.metaLabel}>Finalizado em</dt>
+                <dd className={styles.metaValue}>{formatDate(job.finishedAt)}</dd>
               </>
             )}
           </dl>
@@ -434,7 +331,7 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
       </CardBody>
 
       <CardFooter>
-        <div style={{ display: "flex", gap: "0.75rem" }}>
+        <div className={styles.footerActions}>
           <Link href="/jobs">
             <Button variant="secondary">Voltar à lista</Button>
           </Link>

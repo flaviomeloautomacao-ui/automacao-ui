@@ -53,7 +53,7 @@ export function JobActions({ jobId, status }: JobActionsProps) {
   }, [jobId]);
 
   return (
-    <div style={{ display: "flex", gap: "0.5rem" }}>
+    <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
       <Link href={`/jobs/${jobId}`}>
         <Button variant="secondary" size="sm">
           Detalhes

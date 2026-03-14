@@ -1,13 +1,30 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useRef } from "react";
+import { type FormEvent, useState, useRef, useCallback, type DragEvent } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, CardBody, CardFooter } from "@/components/ui/Card";
-import { ProfileSelect } from "@/components/upload/ProfileSelect";
+import { Card, CardBody, CardFooter } from "@/components/ui/Card";
 import type { ApiResponse, CreateJobResponse } from "@/lib/types";
 import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS } from "@/lib/constants";
+import css from "./UploadForm.module.css";
+
+const PROFILES = [
+  {
+    value: "dust",
+    label: "Poeira Combustível",
+    desc: "Análise de perigos por poeira combustível (ABNT NBR IEC 60079-10-2)",
+    icon: "🏭",
+    cssClass: "dust",
+  },
+  {
+    value: "gas",
+    label: "Gás / Vapores",
+    desc: "Análise de perigos por gases e vapores inflamáveis (ABNT NBR IEC 60079-10-1)",
+    icon: "🔥",
+    cssClass: "gas",
+  },
+] as const;
 
 interface FieldErrors {
   profile?: string;
@@ -20,38 +37,55 @@ export function UploadForm() {
 
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [validationDetails, setValidationDetails] = useState<unknown[] | null>(
-    null,
-  );
+  const [validationDetails, setValidationDetails] = useState<unknown[] | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<string>("");
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleDrag = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setFieldErrors((prev) => ({ ...prev, file: undefined }));
+    }
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setSelectedFile(file);
+    if (file) setFieldErrors((prev) => ({ ...prev, file: undefined }));
+  }, []);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setApiError(null);
     setValidationDetails(null);
 
-    const form = new FormData(e.currentTarget);
-    const profile = (form.get("profile") as string)?.trim();
-    const file = form.get("file") as File | null;
-
-    // ── Client‑side validation ──────────────────────────
     const errors: FieldErrors = {};
-    if (!profile) errors.profile = "Selecione um perfil de risco.";
+    if (!selectedProfile) errors.profile = "Selecione um perfil de risco.";
 
-    if (!file || file.size === 0) {
+    if (!selectedFile || selectedFile.size === 0) {
       errors.file = "Selecione um arquivo .xlsx ou .csv.";
     } else {
-      const ext = file.name.toLowerCase().split(".").pop();
-      if (
-        !ext ||
-        !ALLOWED_EXTENSIONS.includes(
-          `.${ext}` as (typeof ALLOWED_EXTENSIONS)[number],
-        )
-      ) {
+      const ext = selectedFile.name.toLowerCase().split(".").pop();
+      if (!ext || !ALLOWED_EXTENSIONS.includes(`.${ext}` as (typeof ALLOWED_EXTENSIONS)[number])) {
         errors.file = `Extensão .${ext} não permitida. Use: ${ALLOWED_EXTENSIONS.join(", ")}`;
       }
-      if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      if (selectedFile.size > MAX_UPLOAD_MB * 1024 * 1024) {
         errors.file = `Arquivo excede o limite de ${MAX_UPLOAD_MB}MB.`;
       }
     }
@@ -66,14 +100,10 @@ export function UploadForm() {
 
     try {
       const body = new FormData();
-      body.append("file", file!);
-      body.append("profile", profile!);
+      body.append("file", selectedFile!);
+      body.append("profile", selectedProfile);
 
-      const res = await fetch("/api/jobs", {
-        method: "POST",
-        body,
-      });
-
+      const res = await fetch("/api/jobs", { method: "POST", body });
       const json: ApiResponse<CreateJobResponse> = await res.json();
 
       if (json.error) {
@@ -92,128 +122,134 @@ export function UploadForm() {
     }
   }
 
-  return (
-    <form onSubmit={handleSubmit} noValidate>
-      <Card>
-        <CardHeader>Novo Laudo Técnico</CardHeader>
+  const dropzoneClasses = [
+    css.dropzone,
+    dragActive ? css.active : "",
+    selectedFile ? css.hasFile : "",
+    fieldErrors.file ? css.hasError : "",
+  ].filter(Boolean).join(" ");
 
+  return (
+    <form onSubmit={handleSubmit} noValidate className={css.form}>
+      <Card>
         <CardBody>
+          {/* Profile Selection */}
+          <div className={css.profileSection}>
+            <span className={css.profileLabel}>Perfil de Risco</span>
+            <div className={css.profileCards}>
+              {PROFILES.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  className={`${css.profileCard} ${selectedProfile === p.value ? css.selected : ""}`}
+                  onClick={() => {
+                    setSelectedProfile(p.value);
+                    setFieldErrors((prev) => ({ ...prev, profile: undefined }));
+                  }}
+                  disabled={loading}
+                >
+                  <div className={`${css.profileIcon} ${css[p.cssClass]}`}>{p.icon}</div>
+                  <span className={css.profileName}>{p.label}</span>
+                  <span className={css.profileDesc}>{p.desc}</span>
+                </button>
+              ))}
+            </div>
+            {fieldErrors.profile && (
+              <span className={css.profileError}>{fieldErrors.profile}</span>
+            )}
+          </div>
+
+          {/* Hidden profile input for form */}
+          <input type="hidden" name="profile" value={selectedProfile} />
+
+          {/* Dropzone */}
           <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "1rem",
+            className={dropzoneClasses}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
             }}
           >
-            {/* Profile select */}
-            <ProfileSelect
-              error={fieldErrors.profile}
-              required
-              disabled={loading}
-            />
-
-            {/* File upload */}
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.25rem",
-              }}
-            >
-              <label
-                htmlFor="file"
-                style={{ fontSize: "0.875rem", fontWeight: 600 }}
-              >
-                Planilha (.xlsx ou .csv)
-              </label>
-              <input
-                ref={fileInputRef}
-                id="file"
-                name="file"
-                type="file"
-                accept=".xlsx,.csv"
-                disabled={loading}
-                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-                style={{
-                  padding: "0.5rem 0.75rem",
-                  borderRadius: "0.375rem",
-                  border: fieldErrors.file
-                    ? "1px solid #ef4444"
-                    : "1px solid #d1d5db",
-                  fontSize: "0.875rem",
-                  backgroundColor: "var(--background)",
-                  color: "var(--foreground)",
-                }}
-              />
-              {selectedFile && (
-                <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
-                  {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-                </span>
-              )}
-              {fieldErrors.file && (
-                <span style={{ fontSize: "0.75rem", color: "#ef4444" }}>
-                  {fieldErrors.file}
-                </span>
+            <div className={css.dropzoneIcon}>
+              {selectedFile ? (
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
               )}
             </div>
 
-            {/* API error banner */}
-            {apiError && (
-              <div
-                role="alert"
-                style={{
-                  padding: "0.75rem 1rem",
-                  borderRadius: "0.375rem",
-                  backgroundColor: "#fef2f2",
-                  color: "#b91c1c",
-                  fontSize: "0.875rem",
-                  border: "1px solid #fecaca",
-                }}
-              >
-                <p style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
-                  {apiError}
-                </p>
-                {validationDetails && validationDetails.length > 0 && (
-                  <ul
-                    style={{
-                      listStyle: "disc",
-                      paddingLeft: "1.25rem",
-                      marginTop: "0.5rem",
-                      fontSize: "0.8rem",
-                      maxHeight: "12rem",
-                      overflowY: "auto",
-                    }}
-                  >
-                    {validationDetails.slice(0, 20).map((detail, i) => {
-                      const d = detail as Record<string, string>;
-                      return (
-                        <li key={i}>
-                          {d.column ? <><strong>{d.column}</strong>{" | "}</> : null}
-                          {d.row ? <>Linha {d.row}{" | "}</> : null}
-                          {d.message ?? JSON.stringify(d)}
-                        </li>
-                      );
-                    })}
-                    {validationDetails.length > 20 && (
-                      <li>… e mais {validationDetails.length - 20} erro(s)</li>
-                    )}
-                  </ul>
-                )}
+            {selectedFile ? (
+              <div className={css.fileInfo}>
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                </svg>
+                {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
               </div>
+            ) : (
+              <>
+                <span className={css.dropzoneTitle}>
+                  Arraste o arquivo aqui ou <strong>clique para selecionar</strong>
+                </span>
+                <span className={css.dropzoneSub}>
+                  Formatos aceitos: .xlsx, .csv — Máximo {MAX_UPLOAD_MB}MB
+                </span>
+              </>
             )}
+
+            {fieldErrors.file && (
+              <span className={css.dropzoneError}>{fieldErrors.file}</span>
+            )}
+
+            <input
+              ref={fileInputRef}
+              name="file"
+              type="file"
+              accept=".xlsx,.csv"
+              disabled={loading}
+              onChange={handleFileChange}
+              hidden
+            />
           </div>
+
+          {/* API Error Banner */}
+          {apiError && (
+            <div className={css.errorBanner} role="alert">
+              <p>{apiError}</p>
+              {validationDetails && validationDetails.length > 0 && (
+                <ul className={css.errorList}>
+                  {validationDetails.slice(0, 20).map((detail, i) => {
+                    const d = detail as Record<string, string>;
+                    return (
+                      <li key={i}>
+                        {d.column ? <><strong>{d.column}</strong>{" | "}</> : null}
+                        {d.row ? <>Linha {d.row}{" | "}</> : null}
+                        {d.message ?? JSON.stringify(d)}
+                      </li>
+                    );
+                  })}
+                  {validationDetails.length > 20 && (
+                    <li>… e mais {validationDetails.length - 20} erro(s)</li>
+                  )}
+                </ul>
+              )}
+            </div>
+          )}
         </CardBody>
 
         <CardFooter>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "0.5rem",
-            }}
-          >
-            <Button type="submit" variant="primary" disabled={loading}>
-              {loading ? "Criando…" : "Criar Job"}
+          <div className={css.actions}>
+            <Button type="submit" variant="primary" size="lg" disabled={loading}>
+              {loading ? "Criando…" : "Criar Laudo"}
             </Button>
           </div>
         </CardFooter>

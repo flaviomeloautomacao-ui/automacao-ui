@@ -1,0 +1,243 @@
+/* ── Job Detail ── */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pollingHint {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  margin-top: var(--space-1);
+}
+
+.body {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.currentStep {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: calc(-1 * var(--space-2));
+}
+
+/* ── Pipeline section ── */
+
+.sectionTitle {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+/* ── Banners ── */
+
+.banner {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid;
+}
+
+.bannerTitle {
+  font-weight: 600;
+  font-size: var(--text-base);
+  margin-bottom: var(--space-1);
+}
+
+.bannerText {
+  font-size: var(--text-sm);
+}
+
+.bannerAction {
+  margin-top: var(--space-2);
+}
+
+/* Awaiting complement / Timeout / Stale */
+.bannerWarning {
+  composes: banner;
+  background-color: #fffbeb;
+  border-color: #fde68a;
+}
+
+.bannerWarning .bannerTitle {
+  color: #92400e;
+}
+
+.bannerWarning .bannerText {
+  color: #a16207;
+}
+
+/* Done */
+.bannerSuccess {
+  composes: banner;
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.bannerSuccess .bannerTitle {
+  color: #166534;
+}
+
+.bannerSuccess .bannerText {
+  color: #15803d;
+}
+
+/* Error */
+.bannerError {
+  composes: banner;
+  background-color: #fef2f2;
+  border-color: #fecaca;
+}
+
+.bannerError .bannerTitle {
+  color: #991b1b;
+}
+
+.bannerError .bannerText {
+  color: #b91c1c;
+}
+
+/* Retry / resume small button inside banner */
+.bannerRetryBtn {
+  margin-top: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: #92400e;
+  background-color: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.bannerRetryBtn:hover {
+  background-color: #fde68a;
+}
+
+/* ── Metadata DL ── */
+
+.metadata {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-6);
+  font-size: var(--text-base);
+}
+
+.metaLabel {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.metaValue {
+  color: var(--text-primary);
+}
+
+.metaValueMono {
+  composes: metaValue;
+  font-family: var(--font-jetbrains, monospace);
+  font-size: var(--text-sm);
+}
+
+/* ── Footer actions ── */
+
+.footerActions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* ── Dark mode banner overrides ── */
+
+@media (prefers-color-scheme: dark) {
+  .bannerWarning {
+    background-color: rgba(251, 191, 36, 0.1);
+    border-color: rgba(251, 191, 36, 0.3);
+  }
+
+  .bannerWarning .bannerTitle {
+    color: #fbbf24;
+  }
+
+  .bannerWarning .bannerText {
+    color: #f59e0b;
+  }
+
+  .bannerSuccess {
+    background-color: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+
+  .bannerSuccess .bannerTitle {
+    color: #4ade80;
+  }
+
+  .bannerSuccess .bannerText {
+    color: #22c55e;
+  }
+
+  .bannerError {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .bannerError .bannerTitle {
+    color: #f87171;
+  }
+
+  .bannerError .bannerText {
+    color: #ef4444;
+  }
+
+  .bannerRetryBtn {
+    color: #fbbf24;
+    background-color: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.3);
+  }
+
+  .bannerRetryBtn:hover {
+    background-color: rgba(251, 191, 36, 0.25);
+  }
+}
+
+/* ── Mobile responsive ── */
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .title {
+    font-size: var(--text-lg);
+  }
+
+  .metadata {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .metaLabel {
+    margin-top: var(--space-2);
+  }
+
+  .footerActions {
+    flex-direction: column;
+  }
+
+  .footerActions a,
+  .footerActions button {
+    width: 100%;
+  }
+}

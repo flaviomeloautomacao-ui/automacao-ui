@@ -703,13 +703,9 @@ export function ComplementForm({
                 return (
                   <div
                     key={eq.id}
-                    style={{
-                      marginBottom: "0.75rem",
-                      paddingBottom: "0.75rem",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
+                    className={css.reviewEqItem}
                   >
-                    <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>
+                    <div className={css.reviewEqName}>
                       {idx + 1}. {eq.equipmentName}
                     </div>
                     <div className={css.reviewGrid}>

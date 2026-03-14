@@ -5,26 +5,35 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--text-base);
 }
 
 .table th,
 .table td {
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
   text-align: left;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
 }
 
 .table th {
   font-weight: 600;
-  color: #6b7280;
-  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  background: var(--bg-secondary);
+}
+
+.table tbody tr {
+  transition: background var(--transition-fast);
 }
 
 .table tbody tr:hover {
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: var(--bg-tertiary);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .filename {
@@ -32,39 +41,116 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 500;
 }
 
 .date {
   white-space: nowrap;
-  color: #6b7280;
-  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 
 .empty {
   text-align: center;
-  color: #9ca3af;
-  padding: 3rem 1rem;
+  color: var(--text-muted);
+  padding: var(--space-12) var(--space-4);
+  font-size: var(--text-base);
 }
 
-@media (prefers-color-scheme: dark) {
-  .table th,
-  .table td {
-    border-bottom-color: #374151;
+.emptyIcon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-3);
+  color: var(--border-hover);
+}
+
+.emptyIcon svg {
+  width: 48px;
+  height: 48px;
+}
+
+/* ── Card view for mobile ── */
+
+.cardList {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.jobCard {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: border-color var(--transition-fast);
+}
+
+.jobCard:hover {
+  border-color: var(--border-hover);
+}
+
+.jobCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.jobCardFilename {
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.jobCardMeta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.jobCardLabel {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.jobCardValue {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.jobCardActions {
+  display: flex;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+/* ── Table wrapper with card border ── */
+
+.tableCard {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* ── Responsive: card layout on mobile ── */
+
+@media (max-width: 768px) {
+  .wrapper {
+    display: none;
   }
 
-  .table th {
-    color: #9ca3af;
-  }
-
-  .table tbody tr:hover {
-    background-color: rgba(255, 255, 255, 0.03);
-  }
-
-  .date {
-    color: #9ca3af;
-  }
-
-  .empty {
-    color: #6b7280;
+  .cardList {
+    display: flex;
   }
 }
