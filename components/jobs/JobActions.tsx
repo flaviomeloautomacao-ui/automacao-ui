@@ -12,6 +12,7 @@ interface JobActionsProps {
 
 export function JobActions({ jobId, status }: JobActionsProps) {
   const [downloading, setDownloading] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   const handleDownload = useCallback(async () => {
     setDownloading(true);
@@ -32,6 +33,25 @@ export function JobActions({ jobId, status }: JobActionsProps) {
     }
   }, [jobId]);
 
+  const handleRetry = useCallback(async () => {
+    setRetrying(true);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/retry`, { method: "POST" });
+      const json: ApiResponse<{ status: string }> = await res.json();
+
+      if (json.error) {
+        alert(json.error.message);
+        return;
+      }
+
+      window.location.href = `/jobs/${jobId}`;
+    } catch {
+      alert("Falha ao tentar novamente. Verifique o serviço.");
+    } finally {
+      setRetrying(false);
+    }
+  }, [jobId]);
+
   return (
     <div style={{ display: "flex", gap: "0.5rem" }}>
       <Link href={`/jobs/${jobId}`}>
@@ -46,6 +66,17 @@ export function JobActions({ jobId, status }: JobActionsProps) {
             Completar dados
           </Button>
         </Link>
+      )}
+
+      {status === "error" && (
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleRetry}
+          disabled={retrying}
+        >
+          {retrying ? "Reenviando..." : "Tentar Novamente"}
+        </Button>
       )}
 
       {status === "done" && (

@@ -288,6 +288,13 @@ export function ComplementForm({
     }
   }
 
+  async function skipToReview() {
+    // Save current equipment before skipping
+    const saved = await saveEquipment(eqStep);
+    if (!saved) return;
+    setStep(2);
+  }
+
   // ── Submit (start processing) ──────────────────────────
   async function onSubmit() {
     setSubmitting(true);
@@ -623,13 +630,24 @@ export function ComplementForm({
                 <Button variant="secondary" onClick={goBack} disabled={saving}>
                   ← {eqStep === 0 ? "Voltar" : "Anterior"}
                 </Button>
-                <Button onClick={goNext} disabled={saving || isUploading}>
-                  {saving
-                    ? "Salvando…"
-                    : eqStep < eqFields.length - 1
-                      ? "Próximo Equipamento →"
-                      : "Revisão →"}
-                </Button>
+                <div className={css.navRight}>
+                  {eqFields.length > 1 && eqStep < eqFields.length - 1 && (
+                    <Button
+                      variant="secondary"
+                      onClick={skipToReview}
+                      disabled={saving || isUploading}
+                    >
+                      Pular para Revisão ⏭
+                    </Button>
+                  )}
+                  <Button onClick={goNext} disabled={saving || isUploading}>
+                    {saving
+                      ? "Salvando…"
+                      : eqStep < eqFields.length - 1
+                        ? "Próximo Equipamento →"
+                        : "Revisão →"}
+                  </Button>
+                </div>
               </div>
             </CardFooter>
           </Card>

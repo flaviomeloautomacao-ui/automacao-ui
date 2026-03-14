@@ -46,6 +46,7 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
     !TERMINAL_STATUSES.has(initialJob.status),
   );
   const [downloading, setDownloading] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const pollCount = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -117,6 +118,55 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
       alert("Falha ao baixar o PDF. Tente novamente.");
     } finally {
       setDownloading(false);
+    }
+  }, [job.id]);
+
+  const handleRetry = useCallback(async () => {
+    setRetrying(true);
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/retry`, { method: "POST" });
+      const json: ApiResponse<{ status: string }> = await res.json();
+
+      if (json.error) {
+        alert(json.error.message);
+        return;
+      }
+
+      // Optimistically update local state so the UI immediately
+      // shows "processing" and the polling useEffect starts.
+      setJob((prev) => ({
+        ...prev,
+        status: "processing",
+        progress: 10,
+        currentStep: "Reiniciando processamento…",
+        errorCode: null,
+        errorMessage: null,
+        startedAt: new Date().toISOString(),
+        finishedAt: null,
+        pdfPath: null,
+      }));
+
+      // Reset all steps to queued
+      setSteps((prev) =>
+        prev
+          ? prev.map((s) => ({
+            ...s,
+            status: s.name === "upload_storage" ? "done" : "queued",
+            startedAt: s.name === "upload_storage" ? s.startedAt : null,
+            completedAt: s.name === "upload_storage" ? s.completedAt : null,
+            errorMessage: null,
+          }))
+          : prev,
+      );
+
+      // Reset polling to track the new processing
+      setTimedOut(false);
+      pollCount.current = 0;
+      setPolling(true);
+    } catch {
+      alert("Falha ao tentar novamente. Verifique o serviço.");
+    } finally {
+      setRetrying(false);
     }
   }, [job.id]);
 
@@ -331,6 +381,15 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
                   Erro desconhecido. Entre em contato com o suporte.
                 </p>
               )}
+              <Button
+                variant="primary"
+                size="sm"
+                style={{ marginTop: "0.5rem" }}
+                onClick={handleRetry}
+                disabled={retrying}
+              >
+                {retrying ? "Reenviando…" : "Tentar Novamente"}
+              </Button>
             </div>
           )}
 
@@ -383,6 +442,15 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
             <Link href={`/jobs/${job.id}/complement`}>
               <Button variant="primary">Completar dados</Button>
             </Link>
+          )}
+          {job.status === "error" && (
+            <Button
+              variant="primary"
+              onClick={handleRetry}
+              disabled={retrying}
+            >
+              {retrying ? "Reenviando…" : "Tentar Novamente"}
+            </Button>
           )}
           {job.status === "done" && (
             <Button
