@@ -10,6 +10,7 @@
   z-index: 40;
   opacity: 0;
   transition: opacity var(--transition-base);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .overlay.visible {
@@ -23,12 +24,15 @@
   left: 0;
   bottom: 0;
   width: var(--sidebar-width);
+  max-width: 85vw;
   background: var(--bg-primary);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   z-index: 50;
   transition: transform var(--transition-slow);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* ── Logo area ── */
@@ -41,6 +45,7 @@
   border-bottom: 1px solid var(--border);
   text-decoration: none;
   color: var(--text-primary);
+  flex-shrink: 0;
 }
 
 .logoIcon {
@@ -60,6 +65,7 @@
 .logoText {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .logoTitle {
@@ -105,6 +111,7 @@
   color: var(--text-secondary);
   text-decoration: none;
   transition: all var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .navLink:hover {
@@ -137,6 +144,7 @@
   border-top: 1px solid var(--border);
   font-size: var(--text-xs);
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 /* ── Mobile hamburger ── */
@@ -144,11 +152,11 @@
 .menuBtn {
   display: none;
   position: fixed;
-  top: var(--space-4);
-  left: var(--space-4);
+  top: var(--space-3);
+  left: var(--space-3);
   z-index: 60;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-md);
   background: var(--bg-primary);
   border: 1px solid var(--border);
@@ -158,10 +166,16 @@
   justify-content: center;
   color: var(--text-primary);
   transition: background var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
 }
 
 .menuBtn:hover {
   background: var(--bg-tertiary);
+}
+
+.menuBtn:active {
+  transform: scale(0.95);
 }
 
 .menuBtn svg {
@@ -183,5 +197,14 @@
 
   .menuBtn {
     display: flex;
+  }
+
+  .navLink {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-lg);
+  }
+
+  .footer {
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
   }
 }

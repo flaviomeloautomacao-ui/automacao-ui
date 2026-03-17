@@ -4,6 +4,7 @@
 
 .form {
   max-width: 600px;
+  width: 100%;
 }
 
 /* ── Profile Cards ── */
@@ -30,6 +31,10 @@
 @media (max-width: 480px) {
   .profileCards {
     grid-template-columns: 1fr;
+  }
+
+  .profileCard {
+    padding: var(--space-3);
   }
 }
 
@@ -232,4 +237,40 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* ── Mobile Responsive ── */
+
+@media (max-width: 640px) {
+  .dropzone {
+    padding: var(--space-6) var(--space-3);
+  }
+
+  .dropzoneIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions > * {
+    width: 100%;
+  }
+
+  .errorBanner {
+    padding: var(--space-3);
+  }
+
+  .errorList {
+    max-height: 8rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .dropzone {
+    padding: var(--space-4) var(--space-2);
+  }
 }

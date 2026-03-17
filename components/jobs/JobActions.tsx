@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui";
 import type { ApiResponse } from "@/lib/types";
+import styles from "./JobActions.module.css";
 
 interface JobActionsProps {
   jobId: string;
@@ -53,7 +54,7 @@ export function JobActions({ jobId, status }: JobActionsProps) {
   }, [jobId]);
 
   return (
-    <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+    <div className={styles.actions}>
       <Link href={`/jobs/${jobId}`}>
         <Button variant="secondary" size="sm">
           Detalhes

@@ -1,5 +1,6 @@
 .wrapper {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
@@ -42,6 +43,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+  min-width: 0;
 }
 
 .date {
@@ -107,6 +109,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  min-width: 0;
 }
 
 .jobCardMeta {
@@ -131,6 +134,7 @@
   gap: var(--space-2);
   padding-top: var(--space-2);
   border-top: 1px solid var(--border);
+  flex-wrap: wrap;
 }
 
 /* ── Table wrapper with card border ── */
@@ -146,11 +150,43 @@
 /* ── Responsive: card layout on mobile ── */
 
 @media (max-width: 768px) {
-  .wrapper {
+  .tableCard {
     display: none;
   }
 
   .cardList {
     display: flex;
+  }
+}
+
+/* ── Tablet: compact table ── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .table th,
+  .table td {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .filename {
+    max-width: 160px;
+  }
+}
+
+/* ── Small mobile: tighter cards ── */
+@media (max-width: 380px) {
+  .jobCard {
+    padding: var(--space-3);
+  }
+
+  .jobCardMeta {
+    grid-template-columns: 1fr;
+  }
+
+  .jobCardActions {
+    flex-direction: column;
+  }
+
+  .jobCardActions > * {
+    width: 100%;
   }
 }

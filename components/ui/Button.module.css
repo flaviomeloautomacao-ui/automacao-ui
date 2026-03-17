@@ -76,3 +76,28 @@
   font-size: var(--text-lg);
   padding: var(--space-3) var(--space-5);
 }
+
+/* Mobile: ensure sufficient touch targets */
+@media (pointer: coarse) {
+  .sm {
+    padding: var(--space-2) var(--space-3);
+    min-height: 36px;
+  }
+
+  .md {
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .lg {
+    min-height: 48px;
+    padding: var(--space-3) var(--space-6);
+  }
+}
+
+@media (max-width: 640px) {
+  .button {
+    white-space: normal;
+    text-align: center;
+  }
+}

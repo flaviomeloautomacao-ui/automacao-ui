@@ -1,7 +1,22 @@
+/* ================================================================= */
+/*  ComplementForm — Full layout (Seções 16-17 do spec)              */
+/*  Layout central, altura fixa, scroll apenas interno,              */
+/*  botões inferiores sempre visíveis.                               */
+/* ================================================================= */
+
 .page {
-  max-width: 860px;
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
   margin: 0 auto;
-  padding: var(--space-8) var(--space-4);
+  height: calc(100vh - 4rem);
+  height: calc(100dvh - 4rem);
+  padding: var(--space-4);
+  overflow: hidden; /* Seção 17: sem scroll na página inteira */
+}
+
+.header {
+  flex-shrink: 0;
 }
 
 .title {
@@ -14,7 +29,7 @@
 .subtitle {
   font-size: var(--text-sm);
   color: var(--text-muted);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
 }
 
 /* ─── Step indicator ─────────────────────────────────── */
@@ -22,7 +37,8 @@
 .steps {
   display: flex;
   gap: var(--space-2);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
+  flex-shrink: 0;
 }
 
 .stepPill {
@@ -35,6 +51,7 @@
   background-color: var(--bg-tertiary);
   color: var(--text-muted);
   transition: all var(--transition-fast);
+  white-space: nowrap;
 }
 
 .stepPill.active {
@@ -45,6 +62,28 @@
 .stepPill.completed {
   background-color: var(--success);
   color: #fff;
+}
+
+/* ─── Stage area (main content, fills remaining height) ── */
+
+.stageArea {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ─── Scroll container inside cards ──────────────────── */
+
+.scrollInner {
+  overflow-y: auto;
+  max-height: calc(100vh - 22rem);
+  padding-right: var(--space-2);
+}
+
+.reviewScroll {
+  overflow-y: auto;
+  max-height: calc(100vh - 20rem);
+  padding-right: var(--space-2);
 }
 
 /* ─── Form fields ────────────────────────────────────── */
@@ -99,7 +138,14 @@
 }
 
 .textarea {
-  composes: input;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  font-size: var(--text-base);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   resize: vertical;
   min-height: 4rem;
 }
@@ -109,19 +155,154 @@
   color: var(--error);
 }
 
-/* ─── Equipment card ─────────────────────────────────── */
+/* ─── Static elaboration block ───────────────────────── */
 
-.eqList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
+.staticBlock {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border);
 }
 
-.eqCard {
-  border: 1px solid var(--border);
+.staticBlockTitle {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+.staticBlockText {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.fieldHint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin: 0 0 var(--space-1) 0;
+  font-style: italic;
+}
+
+/* ─── Dropzone (batch image upload) ──────────────────── */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  border: 2px dashed var(--border);
   border-radius: var(--radius-md);
-  padding: var(--space-4) var(--space-5);
+  cursor: pointer;
   background: var(--bg-secondary);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  margin-bottom: var(--space-4);
+}
+
+.dropzone:hover {
+  border-color: var(--accent);
+  background: var(--bg-tertiary);
+}
+
+.dropzoneIcon {
+  font-size: 2rem;
+}
+
+.dropzoneText {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dropzoneHint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* ─── Batch upload results ───────────────────────────── */
+
+.batchInstructions {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+  line-height: 1.5;
+}
+
+.batchResults {
+  margin-bottom: var(--space-4);
+}
+
+.batchSummary {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.batchMatched {
+  color: var(--success);
+}
+
+.batchUnmatched {
+  color: var(--error);
+}
+
+.batchList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.batchItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.batchItemOk {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.batchItemFail {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.batchFilename {
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 50%;
+  min-width: 0;
+}
+
+.batchTarget {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.uploadSummary {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
 }
 
 /* ─── Equipment wizard header ────────────────────────── */
@@ -158,7 +339,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .eqIndex {
@@ -172,6 +353,7 @@
   color: #fff;
   font-size: var(--text-xs);
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .eqName {
@@ -185,24 +367,12 @@
   color: var(--text-muted);
 }
 
-.eqFields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2) var(--space-4);
-  margin-bottom: var(--space-3);
-}
-
-@media (max-width: 640px) {
-  .eqFields {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* ─── Image uploader ─────────────────────────────────── */
 
 .imageSection {
   border-top: 1px solid var(--border);
   padding-top: var(--space-3);
+  margin-top: var(--space-3);
 }
 
 .imageGrid {
@@ -274,6 +444,38 @@
   pointer-events: none;
 }
 
+/* ─── Pendency box (review alerts — Seção 19) ────────── */
+
+.pendencyBox {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  margin-bottom: var(--space-4);
+}
+
+.pendencyTitle {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: #d97706;
+  margin-bottom: var(--space-2);
+}
+
+.pendencyItem {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+  line-height: 1.5;
+}
+
+.pendencyNote {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: var(--space-2);
+  margin-bottom: 0;
+}
+
 /* ─── Review ─────────────────────────────────────────── */
 
 .reviewSection {
@@ -292,6 +494,7 @@
   grid-template-columns: auto 1fr;
   gap: var(--space-1) var(--space-4);
   font-size: var(--text-sm);
+  min-width: 0;
 }
 
 .reviewLabel {
@@ -315,19 +518,44 @@
 }
 
 .reviewEqName {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-weight: 600;
   font-size: var(--text-sm);
   color: var(--text-primary);
   margin-bottom: var(--space-1);
 }
 
-/* ─── Nav buttons ────────────────────────────────────── */
+.reviewEqBadges {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.badgeOk {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 0.1rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+}
+
+.badgeWarn {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 0.1rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+/* ─── Nav buttons (always visible at bottom) ─────────── */
 
 .nav {
   display: flex;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-top: var(--space-6);
 }
 
 .navRight {
@@ -345,6 +573,7 @@
   font-size: var(--text-sm);
   border: 1px solid #fecaca;
   margin-bottom: var(--space-4);
+  flex-shrink: 0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -357,10 +586,65 @@
 
 /* ─── Mobile responsive ──────────────────────────────── */
 
+@media (max-width: 768px) {
+  .page {
+    padding: var(--space-3);
+  }
+
+  .dropzone {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .imageThumb {
+    width: 64px;
+    height: 64px;
+  }
+
+  .uploadBtn {
+    width: 64px;
+    height: 64px;
+  }
+
+  .batchItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
+
+  .batchFilename {
+    max-width: 100%;
+  }
+
+  .reviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .reviewLabel {
+    margin-top: var(--space-1);
+  }
+}
+
 @media (max-width: 640px) {
+  .page {
+    height: auto;
+    min-height: calc(100vh - 4rem);
+    min-height: calc(100dvh - 4rem);
+    overflow: auto;
+    padding: var(--space-2);
+  }
+
+  .title {
+    font-size: var(--text-lg);
+  }
+
   .steps {
     flex-direction: column;
     gap: var(--space-1);
+  }
+
+  .stepPill {
+    padding: var(--space-2);
+    font-size: 0.65rem;
   }
 
   .nav {
@@ -369,5 +653,71 @@
 
   .navRight {
     flex-direction: column;
+  }
+
+  .nav > *,
+  .navRight > * {
+    width: 100%;
+  }
+
+  .scrollInner,
+  .reviewScroll {
+    max-height: none;
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .imageGrid {
+    gap: var(--space-1);
+  }
+
+  .imageThumb {
+    width: 56px;
+    height: 56px;
+  }
+
+  .uploadBtn {
+    width: 56px;
+    height: 56px;
+  }
+
+  .eqHeader {
+    flex-wrap: wrap;
+  }
+
+  .reviewEqName {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
+}
+
+/* ─── Small mobile ─────────────────────────────────────── */
+
+@media (max-width: 380px) {
+  .page {
+    padding: var(--space-1);
+  }
+
+  .subtitle {
+    font-size: var(--text-xs);
+  }
+
+  .staticBlock {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .input, .textarea {
+    font-size: 16px; /* Prevent iOS zoom on focus */
+  }
+
+  .pendencyBox {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .batchList {
+    max-height: 150px;
   }
 }

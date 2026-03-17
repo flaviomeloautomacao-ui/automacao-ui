@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeObservations } from "@/lib/normalizeObservations";
 import type { ApiResponse } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -82,15 +83,10 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
 interface PatchReportInput {
   razaoSocial?: string;
-  cnpj?: string;
   site?: string;
-  endereco?: string;
   localVistoriado?: string;
   dataAvaliacao?: string; // ISO-8601
   contrato?: string;
-  elaboracao?: string;
-  responsavel?: string;
-  registroProfissional?: string;
   observacoesGerais?: string;
 }
 
@@ -167,34 +163,33 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         if (body.report) {
           const {
             razaoSocial,
-            cnpj,
             site,
-            endereco,
             localVistoriado,
             dataAvaliacao,
             contrato,
-            elaboracao,
-            responsavel,
-            registroProfissional,
             observacoesGerais,
           } = body.report;
+
+          // Seção 7: Normalizar observações → prompt simplificado (sem LLM)
+          const observacoesGeraisPrompt =
+            observacoesGerais !== undefined
+              ? normalizeObservations(observacoesGerais)
+              : undefined;
 
           await tx.report.update({
             where: { id: report.id },
             data: {
               ...(razaoSocial !== undefined && { razaoSocial }),
-              ...(cnpj !== undefined && { cnpj }),
               ...(site !== undefined && { site }),
-              ...(endereco !== undefined && { endereco }),
               ...(localVistoriado !== undefined && { localVistoriado }),
               ...(dataAvaliacao !== undefined && {
                 dataAvaliacao: new Date(dataAvaliacao),
               }),
               ...(contrato !== undefined && { contrato }),
-              ...(elaboracao !== undefined && { elaboracao }),
-              ...(responsavel !== undefined && { responsavel }),
-              ...(registroProfissional !== undefined && { registroProfissional }),
               ...(observacoesGerais !== undefined && { observacoesGerais }),
+              ...(observacoesGeraisPrompt !== undefined && {
+                observacoesGeraisPrompt,
+              }),
             },
           });
         }

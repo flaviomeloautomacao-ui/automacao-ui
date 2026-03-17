@@ -27,7 +27,7 @@
 
 .actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: var(--space-5);
 }
 
@@ -43,12 +43,23 @@
   text-decoration: none;
   color: var(--text-primary);
   transition: all var(--transition-base);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .actionCard:hover {
   border-color: var(--accent);
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
+}
+
+@media (hover: none) {
+  .actionCard:hover {
+    transform: none;
+  }
+}
+
+.actionCard:active {
+  transform: scale(0.98);
 }
 
 .actionIcon {
@@ -137,6 +148,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs);
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .flowStep {
@@ -177,18 +189,74 @@
   height: 20px;
 }
 
+/* ── Tablet ── */
+@media (max-width: 768px) {
+  .dashboard {
+    gap: var(--space-6);
+  }
+
+  .actions {
+    gap: var(--space-4);
+  }
+
+  .actionCard {
+    padding: var(--space-5);
+  }
+
+  .flow {
+    padding: var(--space-4);
+  }
+}
+
+/* ── Mobile ── */
 @media (max-width: 640px) {
+  .dashboard {
+    gap: var(--space-5);
+  }
+
   .actions {
     grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .actionCard {
+    padding: var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .actionIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .actionIcon svg {
+    width: 20px;
+    height: 20px;
   }
 
   .flow {
     flex-direction: column;
     align-items: flex-start;
+    padding: var(--space-4);
+  }
+
+  .flowStep {
+    width: 100%;
   }
 
   .flowArrow {
     transform: rotate(90deg);
     align-self: center;
+  }
+}
+
+/* ── Small mobile ── */
+@media (max-width: 380px) {
+  .greeting {
+    font-size: var(--text-xl);
+  }
+
+  .actionCard {
+    padding: var(--space-3);
   }
 }

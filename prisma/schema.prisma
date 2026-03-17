@@ -127,7 +127,8 @@ model Report {
   elaboracao           String?
   responsavel          String?
   registroProfissional String?   @map("registro_profissional")
-  observacoesGerais    String?   @map("observacoes_gerais") @db.Text
+  observacoesGerais       String?   @map("observacoes_gerais") @db.Text
+  observacoesGeraisPrompt String?   @map("observacoes_gerais_prompt") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
@@ -9,6 +9,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardBody, CardFooter } from "@/components/ui/Card";
 import type { ApiResponse } from "@/lib/types";
+import {
+  matchImagesToEquipments,
+  type ImageMatchResult,
+} from "@/lib/normalizeEquipmentName";
 
 import css from "./ComplementForm.module.css";
 
@@ -58,15 +62,10 @@ export interface ComplementReport {
 
 const reportSchema = z.object({
   razaoSocial: z.string().min(1, "Razão Social é obrigatória"),
-  cnpj: z.string().min(1, "CNPJ é obrigatório"),
   site: z.string(),
-  endereco: z.string(),
   localVistoriado: z.string(),
   dataAvaliacao: z.string(),
   contrato: z.string(),
-  elaboracao: z.string(),
-  responsavel: z.string().min(1, "Responsável é obrigatório"),
-  registroProfissional: z.string(),
   observacoesGerais: z.string(),
 });
 
@@ -97,11 +96,12 @@ interface ComplementFormProps {
 }
 
 /* ================================================================== */
-/*  Step labels                                                        */
+/*  Step labels — new flow per spec sections 2, 8, 12, 18            */
 /* ================================================================== */
 
 const STEP_LABELS = [
-  "Dados do Relatório",
+  "Dados Gerais",
+  "Upload de Imagens",
   "Equipamentos",
   "Revisão",
 ] as const;
@@ -116,15 +116,16 @@ export function ComplementForm({
   equipments: initialEquipments,
 }: ComplementFormProps) {
   const router = useRouter();
-  // step 0 = report, step 1 = equipments (one-by-one), step 2 = review
+
+  // ── Step management ─────────────────────────────────────
+  // 0 = dados gerais, 1 = upload imagens, 2 = equipamentos, 3 = revisão
   const [step, setStep] = useState(0);
-  // Which equipment is currently being edited (0-based)
   const [eqStep, setEqStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // Track images per equipment (keyed by equipment id)
+  // ── Image state ──────────────────────────────────────────
   const [imagesByEq, setImagesByEq] = useState<
     Record<string, ComplementImage[]>
   >(() => {
@@ -135,10 +136,17 @@ export function ComplementForm({
     return map;
   });
 
+  // Batch upload state (step 1)
+  const [batchResults, setBatchResults] = useState<ImageMatchResult[]>([]);
+  const [batchUploading, setBatchUploading] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
+
   // ── Form setup ─────────────────────────────────────────
   const {
     register,
-    handleSubmit,
     trigger,
     getValues,
     formState: { errors },
@@ -148,17 +156,12 @@ export function ComplementForm({
     defaultValues: {
       report: {
         razaoSocial: report.razaoSocial ?? "",
-        cnpj: report.cnpj ?? "",
         site: report.site ?? "",
-        endereco: report.endereco ?? "",
         localVistoriado: report.localVistoriado ?? "",
         dataAvaliacao: report.dataAvaliacao
           ? report.dataAvaliacao.slice(0, 10)
           : new Date().toISOString().slice(0, 10),
         contrato: report.contrato ?? "",
-        elaboracao: report.elaboracao ?? "",
-        responsavel: report.responsavel ?? "",
-        registroProfissional: report.registroProfissional ?? "",
         observacoesGerais: report.observacoesGerais ?? "",
       },
       equipments: initialEquipments.map((eq) => ({
@@ -177,7 +180,7 @@ export function ComplementForm({
     name: "equipments",
   });
 
-  // ── Save progress (PATCH) — can save just the report, just one equipment, or both ──
+  // ── Save progress ──────────────────────────────────────
   const saveReport = useCallback(async () => {
     const values = getValues();
     setSaving(true);
@@ -210,7 +213,7 @@ export function ComplementForm({
   const saveEquipment = useCallback(
     async (eqIndex: number) => {
       const eq = getValues(`equipments.${eqIndex}`);
-      if (!eq) return true; // nothing to save
+      if (!eq) return true;
       setSaving(true);
       setApiError(null);
       try {
@@ -252,47 +255,68 @@ export function ComplementForm({
       const saved = await saveReport();
       if (!saved) return;
       setStep(1);
-      setEqStep(0);
       return;
     }
 
     if (step === 1) {
-      // Save current equipment first
+      setStep(2);
+      setEqStep(0);
+      return;
+    }
+
+    if (step === 2) {
       const saved = await saveEquipment(eqStep);
       if (!saved) return;
 
-      // If there are more equipments, advance to next
       if (eqStep < eqFields.length - 1) {
         setEqStep((s) => s + 1);
         return;
       }
-      // All equipments done, go to review
-      setStep(2);
+      setStep(3);
       return;
     }
   }
 
   function goBack() {
-    if (step === 1 && eqStep > 0) {
+    if (step === 2 && eqStep > 0) {
       setEqStep((s) => s - 1);
       return;
     }
-    if (step === 1 && eqStep === 0) {
-      setStep(0);
+    if (step === 2 && eqStep === 0) {
+      setStep(1);
       return;
     }
-    if (step === 2) {
-      setStep(1);
+    if (step === 3) {
+      setStep(2);
       setEqStep(eqFields.length - 1);
+      return;
+    }
+    if (step > 0) {
+      setStep((s) => s - 1);
       return;
     }
   }
 
-  async function skipToReview() {
-    // Save current equipment before skipping
+  async function skipToNextWithoutImage() {
     const saved = await saveEquipment(eqStep);
     if (!saved) return;
-    setStep(2);
+
+    const vals = getValues();
+    for (let i = eqStep + 1; i < eqFields.length; i++) {
+      const eqId = vals.equipments[i]?.id;
+      const imgs = eqId ? (imagesByEq[eqId] ?? []) : [];
+      if (imgs.length === 0) {
+        setEqStep(i);
+        return;
+      }
+    }
+    setStep(3);
+  }
+
+  async function skipToReview() {
+    const saved = await saveEquipment(eqStep);
+    if (!saved) return;
+    setStep(3);
   }
 
   // ── Submit (start processing) ──────────────────────────
@@ -300,10 +324,7 @@ export function ComplementForm({
     setSubmitting(true);
     setApiError(null);
 
-    // Save current equipment one last time (user might be on step 1)
-    // Then save report too, just to be safe
     try {
-      // Save the last equipment if we came from step 1
       if (eqFields.length > 0) {
         const saved = await saveEquipment(eqStep);
         if (!saved) {
@@ -328,7 +349,7 @@ export function ComplementForm({
     }
   }
 
-  // ── Image upload / delete ──────────────────────────────
+  // ── Image upload / delete (per-equipment) ──────────────
   const uploadingRef = useRef<Set<string>>(new Set());
   const [uploadingEqs, setUploadingEqs] = useState<Set<string>>(new Set());
 
@@ -337,7 +358,6 @@ export function ComplementForm({
     setUploadingEqs(new Set(uploadingRef.current));
 
     try {
-      // Upload via server API (handles Cloudinary + DB persistence)
       const form = new FormData();
       form.append("file", file);
       form.append("equipmentId", equipmentId);
@@ -399,13 +419,98 @@ export function ComplementForm({
     }
   }
 
-  // ── Render helpers ─────────────────────────────────────
+  // ── Batch image upload (step 1) ─────────────────────────
+  function handleBatchFilesSelected(fileList: FileList) {
+    const contrato = getValues("report.contrato") || "";
+    const files = Array.from(fileList);
+    const eqs = eqFields.map((eq, idx) => ({
+      id: getValues(`equipments.${idx}.id`) ?? eq.id,
+      equipmentName: eq.equipmentName,
+    }));
+    const results = matchImagesToEquipments(files, eqs, contrato);
+    setBatchResults(results);
+  }
+
+  async function executeBatchUpload() {
+    const matched = batchResults.filter((r) => r.matched && r.equipmentId);
+    if (matched.length === 0) return;
+
+    setBatchUploading(true);
+    setBatchProgress({ current: 0, total: matched.length });
+
+    for (let i = 0; i < matched.length; i++) {
+      const item = matched[i];
+      setBatchProgress({ current: i + 1, total: matched.length });
+
+      try {
+        const form = new FormData();
+        form.append("file", item.file);
+        form.append("equipmentId", item.equipmentId!);
+
+        const res = await fetch("/api/images/upload", {
+          method: "POST",
+          body: form,
+        });
+        const json: ApiResponse<{
+          id: string;
+          secureUrl: string;
+          publicId: string;
+          width: number;
+          height: number;
+        }> = await res.json();
+
+        if (!json.error && json.data) {
+          const newImage: ComplementImage = {
+            id: json.data.id,
+            publicId: json.data.publicId,
+            secureUrl: json.data.secureUrl,
+            width: json.data.width,
+            height: json.data.height,
+            createdAt: new Date().toISOString(),
+          };
+          setImagesByEq((prev) => ({
+            ...prev,
+            [item.equipmentId!]: [
+              ...(prev[item.equipmentId!] ?? []),
+              newImage,
+            ],
+          }));
+        }
+      } catch {
+        // Continue uploading remaining images on error
+      }
+    }
+
+    setBatchUploading(false);
+    setBatchProgress(null);
+    setBatchResults((prev) => prev.filter((r) => !r.matched));
+  }
+
+  // ── Pendency computation for review (spec sections 18-19) ──
+  const pendencies = useMemo(() => {
+    const vals = getValues();
+    const noImage: string[] = [];
+    const noObs: string[] = [];
+    for (let i = 0; i < eqFields.length; i++) {
+      const v = vals.equipments[i];
+      const eqId = v?.id ?? eqFields[i].id;
+      const imgs = imagesByEq[eqId] ?? [];
+      if (imgs.length === 0) noImage.push(eqFields[i].equipmentName);
+      if (!v?.observacoesExtras?.trim()) noObs.push(eqFields[i].equipmentName);
+    }
+    return { noImage, noObs };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, imagesByEq, eqFields]);
+
+  // ── Render ─────────────────────────────────────────────
   const values = getValues();
 
   return (
     <div className={css.page}>
-      <h1 className={css.title}>Complementação do Relatório</h1>
-      <p className={css.subtitle}>Job {jobId}</p>
+      <header className={css.header}>
+        <h1 className={css.title}>Complementação do Relatório</h1>
+        <p className={css.subtitle}>Job {jobId}</p>
+      </header>
 
       {/* Step indicator */}
       <div className={css.steps}>
@@ -421,336 +526,551 @@ export function ComplementForm({
 
       {apiError && <div className={css.alert}>{apiError}</div>}
 
-      {/* ─── Step 0: Report metadata ─────────────────────── */}
-      {step === 0 && (
-        <Card>
-          <CardHeader>Dados Gerais do Relatório</CardHeader>
-          <CardBody>
-            <div className={css.fieldGrid}>
-              <Field
-                label="Razão Social *"
-                error={errors.report?.razaoSocial?.message}
-              >
-                <input
-                  className={`${css.input} ${errors.report?.razaoSocial ? css.inputError : ""}`}
-                  {...register("report.razaoSocial")}
-                />
-              </Field>
-
-              <Field label="CNPJ *" error={errors.report?.cnpj?.message}>
-                <input
-                  className={`${css.input} ${errors.report?.cnpj ? css.inputError : ""}`}
-                  {...register("report.cnpj")}
-                />
-              </Field>
-
-              <Field label="Site / Unidade">
-                <input className={css.input} {...register("report.site")} />
-              </Field>
-
-              <Field label="Endereço">
-                <input
-                  className={css.input}
-                  {...register("report.endereco")}
-                />
-              </Field>
-
-              <Field label="Local Vistoriado">
-                <input
-                  className={css.input}
-                  {...register("report.localVistoriado")}
-                />
-              </Field>
-
-              <Field label="Data da Avaliação">
-                <input
-                  type="date"
-                  className={css.input}
-                  {...register("report.dataAvaliacao")}
-                />
-              </Field>
-
-              <Field label="Contrato">
-                <input
-                  className={css.input}
-                  {...register("report.contrato")}
-                />
-              </Field>
-
-              <Field label="Elaboração">
-                <input
-                  className={css.input}
-                  {...register("report.elaboracao")}
-                />
-              </Field>
-
-              <Field
-                label="Responsável Técnico *"
-                error={errors.report?.responsavel?.message}
-              >
-                <input
-                  className={`${css.input} ${errors.report?.responsavel ? css.inputError : ""}`}
-                  {...register("report.responsavel")}
-                />
-              </Field>
-
-              <Field label="Registro Profissional">
-                <input
-                  className={css.input}
-                  {...register("report.registroProfissional")}
-                />
-              </Field>
-
-              <div className={css.fieldFull}>
-                <Field label="Observações Gerais">
-                  <textarea
-                    className={css.textarea}
-                    rows={3}
-                    {...register("report.observacoesGerais")}
-                  />
-                </Field>
-              </div>
-            </div>
-          </CardBody>
-          <CardFooter>
-            <div className={css.nav}>
-              <div />
-              <Button onClick={goNext} disabled={saving}>
-                {saving ? "Salvando…" : "Próximo →"}
-              </Button>
-            </div>
-          </CardFooter>
-        </Card>
-      )}
-
-      {/* ─── Step 1: Equipments (one at a time) ────────────── */}
-      {step === 1 && eqFields[eqStep] && (() => {
-        const eqField = eqFields[eqStep];
-        const idx = eqStep;
-        // eqField.id is auto-generated by react-hook-form, NOT the DB UUID.
-        // The real DB ID is stored in the form values.
-        const dbId = values.equipments[idx]?.id ?? eqField.id;
-        const currentImgs = imagesByEq[dbId] ?? [];
-        const isUploading = uploadingEqs.has(dbId);
-
-        return (
+      <div className={css.stageArea}>
+        {/* ─── Step 0: Dados Gerais ─────────────────────────── */}
+        {step === 0 && (
           <Card>
-            <CardHeader>
-              <div className={css.eqWizardHeader}>
-                <span>
-                  Equipamento {eqStep + 1} de {eqFields.length}
-                </span>
-                <div className={css.eqProgress}>
-                  <div
-                    className={css.eqProgressBar}
-                    style={{ width: `${((eqStep + 1) / eqFields.length) * 100}%` }}
-                  />
-                </div>
-              </div>
-            </CardHeader>
+            <CardHeader>Dados Gerais do Relatório</CardHeader>
             <CardBody>
-              <div className={css.eqHeader}>
-                <span className={css.eqIndex}>{idx + 1}</span>
-                <span className={css.eqName}>{eqField.equipmentName}</span>
-                {eqField.equipmentDescription && (
-                  <span className={css.eqDesc}>
-                    — {eqField.equipmentDescription}
-                  </span>
-                )}
-              </div>
-
-              <div className={css.eqFields}>
-                <Field label="Local de Instalação">
-                  <input
-                    className={css.input}
-                    {...register(`equipments.${idx}.localInstalacao`)}
-                  />
-                </Field>
-                <Field label="Função Operacional">
-                  <input
-                    className={css.input}
-                    {...register(`equipments.${idx}.funcaoOperacional`)}
-                  />
-                </Field>
-              </div>
-
-              <Field label="Observações Extras">
-                <textarea
-                  className={css.textarea}
-                  rows={2}
-                  {...register(`equipments.${idx}.observacoesExtras`)}
-                />
-              </Field>
-
-              {/* Image uploader */}
-              <div className={css.imageSection}>
-                <span className={css.label}>
-                  Imagens ({currentImgs.length})
-                </span>
-                <div className={css.imageGrid}>
-                  {currentImgs.map((img) => (
-                    <div key={img.id} className={css.imageThumb}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img.secureUrl} alt="Equipment" />
-                      <button
-                        type="button"
-                        className={css.imageDelete}
-                        title="Remover imagem"
-                        onClick={() => handleImageDelete(dbId, img.id)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* Upload button */}
-                  <label
-                    className={`${css.uploadBtn} ${isUploading ? css.uploading : ""}`}
+              <div className={css.scrollInner}>
+                <div className={css.fieldGrid}>
+                  <Field
+                    label="Razão Social *"
+                    error={errors.report?.razaoSocial?.message}
                   >
-                    {isUploading ? "…" : "+"}
                     <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      hidden
-                      disabled={isUploading}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleImageUpload(dbId, file);
-                          e.target.value = "";
-                        }
-                      }}
+                      className={`${css.input} ${errors.report?.razaoSocial ? css.inputError : ""}`}
+                      {...register("report.razaoSocial")}
                     />
-                  </label>
+                  </Field>
+
+                  <Field label="Unidade">
+                    <input
+                      className={css.input}
+                      placeholder="Nome da unidade"
+                      {...register("report.site")}
+                    />
+                  </Field>
+
+                  <Field label="Local Vistoriado">
+                    <input
+                      className={css.input}
+                      {...register("report.localVistoriado")}
+                    />
+                  </Field>
+
+                  <Field label="Data da Avaliação">
+                    <input
+                      type="date"
+                      className={css.input}
+                      {...register("report.dataAvaliacao")}
+                    />
+                  </Field>
+
+                  <Field label="Contrato">
+                    <input
+                      className={css.input}
+                      {...register("report.contrato")}
+                    />
+                  </Field>
+
+                  <div />
+
+                  {/* Bloco estático de elaboração (Seção 5) */}
+                  <div className={css.fieldFull}>
+                    <div className={css.staticBlock}>
+                      <span className={css.staticBlockTitle}>Elaboração</span>
+                      <p className={css.staticBlockText}>
+                        Konis Ex do Brasil Ltda.
+                      </p>
+                      <p className={css.staticBlockText}>
+                        Responsável Técnico: Francisco Flávio Melo Cavalcante
+                      </p>
+                      <p className={css.staticBlockText}>
+                        CREA SP – 5060562076
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={css.fieldFull}>
+                    <Field label="Observações gerais (contexto para IA)">
+                      <p className={css.fieldHint}>
+                        Estas observações serão consideradas na geração
+                        automática do documento.
+                      </p>
+                      <textarea
+                        className={css.textarea}
+                        rows={3}
+                        placeholder="Ex: prioridades da vistoria, condições da planta, foco em riscos específicos…"
+                        {...register("report.observacoesGerais")}
+                      />
+                    </Field>
+                  </div>
                 </div>
               </div>
             </CardBody>
             <CardFooter>
               <div className={css.nav}>
-                <Button variant="secondary" onClick={goBack} disabled={saving}>
-                  ← {eqStep === 0 ? "Voltar" : "Anterior"}
+                <div />
+                <Button onClick={goNext} disabled={saving}>
+                  {saving ? "Salvando…" : "Próximo →"}
+                </Button>
+              </div>
+            </CardFooter>
+          </Card>
+        )}
+
+        {/* ─── Step 1: Upload de Imagens em Lote (Seções 8-11) ── */}
+        {step === 1 && (
+          <Card>
+            <CardHeader>Upload de Imagens em Lote</CardHeader>
+            <CardBody>
+              <div className={css.scrollInner}>
+                <p className={css.batchInstructions}>
+                  Selecione múltiplas imagens para vincular automaticamente aos
+                  equipamentos. O nome do arquivo deve seguir o padrão:{" "}
+                  <strong>
+                    {getValues("report.contrato") || "<contrato>"}
+                    &lt;nome_equipamento&gt;.jpg
+                  </strong>
+                </p>
+
+                {/* Dropzone */}
+                <label className={css.dropzone}>
+                  <span className={css.dropzoneIcon}>📁</span>
+                  <span className={css.dropzoneText}>
+                    Clique ou arraste imagens para vincular
+                  </span>
+                  <span className={css.dropzoneHint}>
+                    JPEG, PNG, WebP — máx. 10MB cada
+                  </span>
+                  <input
+                    type="file"
+                    hidden
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleBatchFilesSelected(e.target.files);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
+
+                {/* Match results */}
+                {batchResults.length > 0 && (
+                  <div className={css.batchResults}>
+                    <div className={css.batchSummary}>
+                      <span className={css.batchMatched}>
+                        ✓ {batchResults.filter((r) => r.matched).length}{" "}
+                        vinculadas
+                      </span>
+                      <span className={css.batchUnmatched}>
+                        ✗ {batchResults.filter((r) => !r.matched).length} não
+                        vinculadas
+                      </span>
+                    </div>
+
+                    <div className={css.batchList}>
+                      {batchResults.map((r, idx) => (
+                        <div
+                          key={idx}
+                          className={`${css.batchItem} ${r.matched ? css.batchItemOk : css.batchItemFail}`}
+                        >
+                          <span className={css.batchFilename}>
+                            {r.filename}
+                          </span>
+                          <span className={css.batchTarget}>
+                            {r.matched
+                              ? `→ ${r.equipmentName}`
+                              : "Sem correspondência"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {batchResults.some((r) => r.matched) && (
+                      <Button
+                        onClick={executeBatchUpload}
+                        disabled={batchUploading}
+                      >
+                        {batchUploading && batchProgress
+                          ? `Enviando ${batchProgress.current}/${batchProgress.total}…`
+                          : `Enviar ${batchResults.filter((r) => r.matched).length} imagens vinculadas`}
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {/* Already uploaded summary */}
+                {(() => {
+                  const totalImages = Object.values(imagesByEq).reduce(
+                    (sum, imgs) => sum + imgs.length,
+                    0,
+                  );
+                  const eqsWithImages = Object.values(imagesByEq).filter(
+                    (imgs) => imgs.length > 0,
+                  ).length;
+                  if (totalImages === 0) return null;
+                  return (
+                    <div className={css.uploadSummary}>
+                      <strong>{totalImages}</strong> imagem(ns) vinculadas a{" "}
+                      <strong>{eqsWithImages}</strong> de{" "}
+                      <strong>{eqFields.length}</strong> equipamentos
+                    </div>
+                  );
+                })()}
+              </div>
+            </CardBody>
+            <CardFooter>
+              <div className={css.nav}>
+                <Button variant="secondary" onClick={goBack}>
+                  ← Voltar
                 </Button>
                 <div className={css.navRight}>
-                  {eqFields.length > 1 && eqStep < eqFields.length - 1 && (
-                    <Button
-                      variant="secondary"
-                      onClick={skipToReview}
-                      disabled={saving || isUploading}
-                    >
-                      Pular para Revisão ⏭
-                    </Button>
-                  )}
-                  <Button onClick={goNext} disabled={saving || isUploading}>
-                    {saving
-                      ? "Salvando…"
-                      : eqStep < eqFields.length - 1
-                        ? "Próximo Equipamento →"
-                        : "Revisão →"}
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setStep(3);
+                    }}
+                  >
+                    Pular para Revisão ⏭
+                  </Button>
+                  <Button onClick={goNext} disabled={batchUploading}>
+                    Próximo →
                   </Button>
                 </div>
               </div>
             </CardFooter>
           </Card>
-        );
-      })()}
+        )}
 
-      {/* ─── Step 2: Review ──────────────────────────────── */}
-      {step === 2 && (
-        <Card>
-          <CardHeader>Revisão Final</CardHeader>
-          <CardBody>
-            {/* Report summary */}
-            <div className={css.reviewSection}>
-              <div className={css.reviewTitle}>Dados do Relatório</div>
-              <div className={css.reviewGrid}>
-                <ReviewRow label="Razão Social" value={values.report.razaoSocial} />
-                <ReviewRow label="CNPJ" value={values.report.cnpj} />
-                <ReviewRow label="Site" value={values.report.site} />
-                <ReviewRow label="Endereço" value={values.report.endereco} />
-                <ReviewRow
-                  label="Local Vistoriado"
-                  value={values.report.localVistoriado}
-                />
-                <ReviewRow
-                  label="Data da Avaliação"
-                  value={values.report.dataAvaliacao}
-                />
-                <ReviewRow label="Contrato" value={values.report.contrato} />
-                <ReviewRow label="Elaboração" value={values.report.elaboracao} />
-                <ReviewRow
-                  label="Responsável"
-                  value={values.report.responsavel}
-                />
-                <ReviewRow
-                  label="Reg. Profissional"
-                  value={values.report.registroProfissional}
-                />
-                <ReviewRow
-                  label="Observações"
-                  value={values.report.observacoesGerais}
-                />
-              </div>
-            </div>
+        {/* ─── Step 2: Equipamentos (simplificado — Seção 12) ── */}
+        {step === 2 &&
+          eqFields[eqStep] &&
+          (() => {
+            const eqField = eqFields[eqStep];
+            const idx = eqStep;
+            const dbId = values.equipments[idx]?.id ?? eqField.id;
+            const currentImgs = imagesByEq[dbId] ?? [];
+            const isUploading = uploadingEqs.has(dbId);
 
-            {/* Equipments summary */}
-            <div className={css.reviewSection}>
-              <div className={css.reviewTitle}>
-                Equipamentos ({eqFields.length})
-              </div>
-              {eqFields.map((eq, idx) => {
-                const v = values.equipments[idx];
-                const imgs = imagesByEq[v?.id ?? eq.id] ?? [];
-                return (
-                  <div
-                    key={eq.id}
-                    className={css.reviewEqItem}
-                  >
-                    <div className={css.reviewEqName}>
-                      {idx + 1}. {eq.equipmentName}
-                    </div>
-                    <div className={css.reviewGrid}>
-                      <ReviewRow
-                        label="Local Instalação"
-                        value={v?.localInstalacao}
+            return (
+              <Card>
+                <CardHeader>
+                  <div className={css.eqWizardHeader}>
+                    <span>
+                      Equipamento {eqStep + 1} de {eqFields.length}
+                    </span>
+                    <div className={css.eqProgress}>
+                      <div
+                        className={css.eqProgressBar}
+                        style={{
+                          width: `${((eqStep + 1) / eqFields.length) * 100}%`,
+                        }}
                       />
-                      <ReviewRow
-                        label="Função Operacional"
-                        value={v?.funcaoOperacional}
-                      />
-                      <ReviewRow
-                        label="Observações"
-                        value={v?.observacoesExtras}
-                      />
-                      <span className={css.reviewLabel}>Imagens</span>
-                      <span className={css.reviewValue}>
-                        {imgs.length > 0
-                          ? `${imgs.length} imagem(ns)`
-                          : "Nenhuma"}
-                      </span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </CardBody>
-          <CardFooter>
-            <div className={css.nav}>
-              <Button variant="secondary" onClick={goBack}>
-                ← Voltar
-              </Button>
-              <div className={css.navRight}>
-                <Button
-                  variant="primary"
-                  onClick={onSubmit}
-                  disabled={submitting}
-                >
-                  {submitting ? "Processando…" : "Gerar Relatório"}
-                </Button>
+                </CardHeader>
+                <CardBody>
+                  <div className={css.scrollInner}>
+                    <div className={css.eqHeader}>
+                      <span className={css.eqIndex}>{idx + 1}</span>
+                      <span className={css.eqName}>
+                        {eqField.equipmentName}
+                      </span>
+                      {eqField.equipmentDescription && (
+                        <span className={css.eqDesc}>
+                          — {eqField.equipmentDescription}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Seção 12: apenas observações extras + imagem */}
+                    <Field label="Observações extras (contexto para IA)">
+                      <p className={css.fieldHint}>
+                        Observações específicas deste equipamento para a
+                        geração do relatório.
+                      </p>
+                      <textarea
+                        className={css.textarea}
+                        rows={3}
+                        placeholder="Ex: condição visual, restrições operacionais…"
+                        {...register(`equipments.${idx}.observacoesExtras`)}
+                      />
+                    </Field>
+
+                    {/* Image section (Seção 13) */}
+                    <div className={css.imageSection}>
+                      <span className={css.label}>
+                        Imagem ({currentImgs.length})
+                      </span>
+                      <div className={css.imageGrid}>
+                        {currentImgs.map((img) => (
+                          <div key={img.id} className={css.imageThumb}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={img.secureUrl} alt="Equipment" />
+                            <button
+                              type="button"
+                              className={css.imageDelete}
+                              title="Remover imagem"
+                              onClick={() => handleImageDelete(dbId, img.id)}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+
+                        <label
+                          className={`${css.uploadBtn} ${isUploading ? css.uploading : ""}`}
+                        >
+                          {isUploading ? "…" : "+"}
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            hidden
+                            disabled={isUploading}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageUpload(dbId, file);
+                                e.target.value = "";
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </CardBody>
+                <CardFooter>
+                  <div className={css.nav}>
+                    <Button
+                      variant="secondary"
+                      onClick={goBack}
+                      disabled={saving}
+                    >
+                      ← {eqStep === 0 ? "Voltar" : "Anterior"}
+                    </Button>
+                    <div className={css.navRight}>
+                      {/* Seção 13: "Pular para o próximo sem imagem" */}
+                      <Button
+                        variant="secondary"
+                        onClick={skipToNextWithoutImage}
+                        disabled={saving || isUploading}
+                      >
+                        Próximo sem Imagem ⏭
+                      </Button>
+                      {eqFields.length > 1 &&
+                        eqStep < eqFields.length - 1 && (
+                          <Button
+                            variant="secondary"
+                            onClick={skipToReview}
+                            disabled={saving || isUploading}
+                          >
+                            Ir para Revisão
+                          </Button>
+                        )}
+                      <Button
+                        onClick={goNext}
+                        disabled={saving || isUploading}
+                      >
+                        {saving
+                          ? "Salvando…"
+                          : eqStep < eqFields.length - 1
+                            ? "Próximo →"
+                            : "Revisão →"}
+                      </Button>
+                    </div>
+                  </div>
+                </CardFooter>
+              </Card>
+            );
+          })()}
+
+        {/* ─── Step 3: Revisão Final (Seções 18-19) ──────────── */}
+        {step === 3 && (
+          <Card>
+            <CardHeader>Revisão Final</CardHeader>
+            <CardBody>
+              <div className={css.reviewScroll}>
+                {/* Pendencies / alerts (Seção 19) */}
+                {(pendencies.noImage.length > 0 ||
+                  pendencies.noObs.length > 0) && (
+                    <div className={css.pendencyBox}>
+                      <div className={css.pendencyTitle}>
+                        ⚠ Alertas de Pendência
+                      </div>
+                      {pendencies.noImage.length > 0 && (
+                        <div className={css.pendencyItem}>
+                          <strong>
+                            {pendencies.noImage.length} equipamento(s) sem
+                            imagem:
+                          </strong>{" "}
+                          {pendencies.noImage.join(", ")}
+                        </div>
+                      )}
+                      {pendencies.noObs.length > 0 && (
+                        <div className={css.pendencyItem}>
+                          <strong>
+                            {pendencies.noObs.length} equipamento(s) sem
+                            observações:
+                          </strong>{" "}
+                          {pendencies.noObs.join(", ")}
+                        </div>
+                      )}
+                      <p className={css.pendencyNote}>
+                        Estes itens não impedem a geração do relatório.
+                      </p>
+                    </div>
+                  )}
+
+                {/* Report summary */}
+                <div className={css.reviewSection}>
+                  <div className={css.reviewTitle}>Dados do Relatório</div>
+                  <div className={css.reviewGrid}>
+                    <ReviewRow
+                      label="Razão Social"
+                      value={values.report.razaoSocial}
+                    />
+                    <ReviewRow label="Unidade" value={values.report.site} />
+                    <ReviewRow
+                      label="Local Vistoriado"
+                      value={values.report.localVistoriado}
+                    />
+                    <ReviewRow
+                      label="Data da Avaliação"
+                      value={values.report.dataAvaliacao}
+                    />
+                    <ReviewRow
+                      label="Contrato"
+                      value={values.report.contrato}
+                    />
+                  </div>
+
+                  {/* Static elaboration */}
+                  <div
+                    className={css.staticBlock}
+                    style={{ marginTop: "var(--space-3)" }}
+                  >
+                    <span className={css.staticBlockTitle}>Elaboração</span>
+                    <p className={css.staticBlockText}>
+                      Konis Ex do Brasil Ltda.
+                    </p>
+                    <p className={css.staticBlockText}>
+                      Responsável Técnico: Francisco Flávio Melo Cavalcante
+                    </p>
+                    <p className={css.staticBlockText}>
+                      CREA SP – 5060562076
+                    </p>
+                  </div>
+
+                  {values.report.observacoesGerais && (
+                    <div style={{ marginTop: "var(--space-3)" }}>
+                      <div className={css.reviewGrid}>
+                        <ReviewRow
+                          label="Observações (IA)"
+                          value={values.report.observacoesGerais}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Images summary (Seção 18) */}
+                <div className={css.reviewSection}>
+                  <div className={css.reviewTitle}>Imagens Vinculadas</div>
+                  <div className={css.reviewGrid}>
+                    <ReviewRow
+                      label="Total de imagens"
+                      value={String(
+                        Object.values(imagesByEq).reduce(
+                          (sum, imgs) => sum + imgs.length,
+                          0,
+                        ),
+                      )}
+                    />
+                    <ReviewRow
+                      label="Equipamentos com imagem"
+                      value={`${Object.values(imagesByEq).filter((imgs) => imgs.length > 0).length} de ${eqFields.length}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Equipments summary */}
+                <div className={css.reviewSection}>
+                  <div className={css.reviewTitle}>
+                    Equipamentos ({eqFields.length})
+                  </div>
+                  {eqFields.map((eq, idx) => {
+                    const v = values.equipments[idx];
+                    const imgs = imagesByEq[v?.id ?? eq.id] ?? [];
+                    const hasObs = !!v?.observacoesExtras?.trim();
+                    return (
+                      <div key={eq.id} className={css.reviewEqItem}>
+                        <div className={css.reviewEqName}>
+                          <span>
+                            {idx + 1}. {eq.equipmentName}
+                          </span>
+                          <span className={css.reviewEqBadges}>
+                            {imgs.length > 0 ? (
+                              <span className={css.badgeOk}>
+                                {imgs.length} img
+                              </span>
+                            ) : (
+                              <span className={css.badgeWarn}>Sem imagem</span>
+                            )}
+                            {!hasObs && (
+                              <span className={css.badgeWarn}>Sem obs.</span>
+                            )}
+                          </span>
+                        </div>
+                        {(v?.observacoesExtras?.trim() || imgs.length > 0) && (
+                          <div className={css.reviewGrid}>
+                            {v?.observacoesExtras?.trim() && (
+                              <ReviewRow
+                                label="Observações"
+                                value={v.observacoesExtras}
+                              />
+                            )}
+                            {imgs.length > 0 && (
+                              <>
+                                <span className={css.reviewLabel}>
+                                  Imagens
+                                </span>
+                                <span className={css.reviewValue}>
+                                  {imgs.length} imagem(ns)
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          </CardFooter>
-        </Card>
-      )}
+            </CardBody>
+            <CardFooter>
+              <div className={css.nav}>
+                <Button variant="secondary" onClick={goBack}>
+                  ← Voltar
+                </Button>
+                <div className={css.navRight}>
+                  <Button
+                    variant="primary"
+                    onClick={onSubmit}
+                    disabled={submitting}
+                  >
+                    {submitting ? "Processando…" : "Gerar Relatório"}
+                  </Button>
+                </div>
+              </div>
+            </CardFooter>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

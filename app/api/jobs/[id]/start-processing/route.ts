@@ -39,8 +39,6 @@ type RouteParams = { params: Promise<{ id: string }> };
 /** Campos do report que devem estar preenchidos para iniciar processamento */
 const REQUIRED_REPORT_FIELDS = [
   "razaoSocial",
-  "cnpj",
-  "responsavel",
 ] as const;
 
 // ─── POST /api/jobs/:id/start-processing ──────────────────

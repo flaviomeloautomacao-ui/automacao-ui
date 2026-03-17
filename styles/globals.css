@@ -172,6 +172,14 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Suporte a safe-area para notched devices */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
 body {
   background: var(--bg-secondary);
   color: var(--text-primary);
@@ -180,6 +188,29 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Melhor touch-action para scrolling em mobile */
+@media (pointer: coarse) {
+  html {
+    touch-action: manipulation;
+  }
+
+  /* Garante área de toque mínima para elementos interativos */
+  button, a, [role="button"], input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Exceção para badges/labels pequenos e links inline */
+  .badge, [class*="badge"], [class*="Badge"],
+  a:not([class]) {
+    min-height: unset;
+    min-width: unset;
+  }
 }
 
 /* ── Scrollbar Styling ── */
@@ -224,4 +255,32 @@ body {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* ── Responsive text scaling ── */
+@media (max-width: 480px) {
+  :root {
+    --text-2xl: 1.25rem;
+    --text-3xl: 1.5rem;
+    --text-xl: 1.125rem;
+  }
+}
+
+/* ── Prevent horizontal overflow globally ── */
+#__next, main {
+  overflow-x: hidden;
+}
+
+/* ── Mobile-optimized images ── */
+img, video, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Better word-breaking for small screens ── */
+@media (max-width: 768px) {
+  body {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
 }
