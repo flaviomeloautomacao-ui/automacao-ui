@@ -3,8 +3,7 @@ import { type SelectHTMLAttributes } from "react";
 /** Perfis de risco disponíveis para seleção */
 const PROFILES = [
   { value: "dust", label: "Poeira (Dust)" },
-  { value: "gas", label: "Gás/Vapores (Gas/Vapors)" },
-  // { value: "vapors", label: "Vapores (Vapors)" },
+  { value: "gas", label: "Gás/Vapores (Gas/Vapors) — Em breve", disabled: true },
 ] as const;
 
 interface ProfileSelectProps
@@ -50,7 +49,12 @@ export function ProfileSelect({
           Selecione um perfil…
         </option>
         {PROFILES.map((p) => (
-          <option key={p.value} value={p.value}>
+          <option
+            key={p.value}
+            value={p.value}
+            disabled={"disabled" in p && !!p.disabled}
+            style={"disabled" in p && p.disabled ? { color: "#9ca3af" } : undefined}
+          >
             {p.label}
           </option>
         ))}

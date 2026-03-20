@@ -8,7 +8,7 @@ import css from "./Sidebar.module.css";
 const NAV_ITEMS = [
   {
     href: "/",
-    label: "Dashboard",
+    label: "Inicio",
     icon: (
       <svg viewBox="0 0 20 20" fill="currentColor">
         <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
@@ -75,9 +75,9 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside className={`${css.sidebar} ${open ? css.open : ""}`}>
         <Link href="/" className={css.logo} onClick={close}>
-          <div className={css.logoIcon}>D</div>
+          <div className={css.logoIcon}>K</div>
           <div className={css.logoText}>
-            <span className={css.logoTitle}>DHA Automação</span>
+            <span className={css.logoTitle}>Konis Automação</span>
             <span className={css.logoSub}>Gestão de Laudos</span>
           </div>
         </Link>
@@ -98,7 +98,7 @@ export function Sidebar() {
         </nav>
 
         <div className={css.footer}>
-          DHA Automação v1.0
+          Konis Automação v1.0
         </div>
       </aside>
     </>

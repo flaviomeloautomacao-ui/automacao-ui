@@ -8,7 +8,7 @@ export default function Home() {
       <div className={css.dashboard}>
         {/* Header */}
         <div className={css.header}>
-          <h1 className={css.greeting}>Dashboard</h1>
+          <h1 className={css.greeting}>Inicio</h1>
           <p className={css.headerSub}>
             Gerencie seus laudos técnicos de análise de perigos.
           </p>

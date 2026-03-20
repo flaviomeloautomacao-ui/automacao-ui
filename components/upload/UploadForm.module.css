@@ -61,6 +61,28 @@
   box-shadow: 0 0 0 1px var(--accent);
 }
 
+.profileCard.comingSoon {
+  position: relative;
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  filter: grayscale(0.4);
+}
+
+.comingSoonBadge {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--text-secondary);
+  color: var(--bg-primary);
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-full, 9999px);
+}
+
 .profileIcon {
   width: 36px;
   height: 36px;

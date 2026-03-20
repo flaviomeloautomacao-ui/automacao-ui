@@ -23,6 +23,7 @@ const PROFILES = [
     desc: "Análise de perigos por gases e vapores inflamáveis (ABNT NBR IEC 60079-10-1)",
     icon: "🔥",
     cssClass: "gas",
+    comingSoon: true,
   },
 ] as const;
 
@@ -137,22 +138,29 @@ export function UploadForm() {
           <div className={css.profileSection}>
             <span className={css.profileLabel}>Perfil de Risco</span>
             <div className={css.profileCards}>
-              {PROFILES.map((p) => (
-                <button
-                  key={p.value}
-                  type="button"
-                  className={`${css.profileCard} ${selectedProfile === p.value ? css.selected : ""}`}
-                  onClick={() => {
-                    setSelectedProfile(p.value);
-                    setFieldErrors((prev) => ({ ...prev, profile: undefined }));
-                  }}
-                  disabled={loading}
-                >
-                  <div className={`${css.profileIcon} ${css[p.cssClass]}`}>{p.icon}</div>
-                  <span className={css.profileName}>{p.label}</span>
-                  <span className={css.profileDesc}>{p.desc}</span>
-                </button>
-              ))}
+              {PROFILES.map((p) => {
+                const isDisabled = loading || ("comingSoon" in p && !!p.comingSoon);
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    className={`${css.profileCard} ${selectedProfile === p.value ? css.selected : ""} ${"comingSoon" in p && p.comingSoon ? css.comingSoon : ""}`}
+                    onClick={() => {
+                      if ("comingSoon" in p && p.comingSoon) return;
+                      setSelectedProfile(p.value);
+                      setFieldErrors((prev) => ({ ...prev, profile: undefined }));
+                    }}
+                    disabled={isDisabled}
+                  >
+                    {"comingSoon" in p && p.comingSoon && (
+                      <span className={css.comingSoonBadge}>Em breve</span>
+                    )}
+                    <div className={`${css.profileIcon} ${css[p.cssClass]}`}>{p.icon}</div>
+                    <span className={css.profileName}>{p.label}</span>
+                    <span className={css.profileDesc}>{p.desc}</span>
+                  </button>
+                );
+              })}
             </div>
             {fieldErrors.profile && (
               <span className={css.profileError}>{fieldErrors.profile}</span>

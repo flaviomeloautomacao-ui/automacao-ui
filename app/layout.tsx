@@ -15,8 +15,8 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DHA Automação",
-  description: "Sistema de automação de laudos DHA",
+  title: "Konis Automação",
+  description: "Sistema de automação de laudos",
 };
 
 export const viewport: Viewport = {
