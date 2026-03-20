@@ -4,6 +4,8 @@ import {
   ComplementForm,
 } from "@/components/complement/ComplementForm";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }

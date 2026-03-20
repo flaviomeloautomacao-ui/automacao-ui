@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { JobDetail } from "@/components/jobs/JobDetail";
 
+export const dynamic = "force-dynamic";
+
 interface JobDetailPageProps {
   params: Promise<{ id: string }>;
 }

@@ -3,6 +3,8 @@ import { JobsTableLive } from "@/components/jobs/JobsTableLive";
 import Link from "next/link";
 import { Button } from "@/components/ui";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "Histórico — DHA Automação" };
 
 export default async function JobsPage() {
