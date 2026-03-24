@@ -778,17 +778,18 @@ export function ComplementForm({
                   )}
                 </div>
 
-                {/* ─── Código do Documento e ART (Feature 5) ── */}
+                {/* ─── Nome do Documento (Feature 5) ── */}
                 <div className={css.fieldGrid}>
-                  <Field label="Código do Documento">
+                  <Field label="Nome do Documento">
                     <input
                       className={css.input}
-                      placeholder="Ex: DHA-2026-001"
+                      placeholder="Ex: DHA - Diagnóstico de Segurança"
                       value={codigoDocumento}
                       onChange={(e) => setCodigoDocumento(e.target.value)}
                     />
                   </Field>
 
+                  {/* Campo ART oculto por enquanto
                   <Field label="Número da ART">
                     <input
                       className={css.input}
@@ -797,9 +798,10 @@ export function ComplementForm({
                       onChange={(e) => setArtNumero(e.target.value)}
                     />
                   </Field>
+                  */}
                 </div>
 
-                {/* ─── Tabela de Revisões (Feature 2) ─────────── */}
+                {/* ─── Tabela de Revisões (Feature 2) — oculta por enquanto, revisão será preenchida após gerar PDF
                 <div className={css.revisionSection}>
                   <div className={css.revisionHeader}>
                     <span className={css.label}>Controle de Revisão</span>
@@ -883,6 +885,7 @@ export function ComplementForm({
                     </table>
                   </div>
                 </div>
+                ─────────── */}
               </div>
             </CardBody>
             <CardFooter>
@@ -1224,13 +1227,15 @@ export function ComplementForm({
                       value={values.report.contrato}
                     />
                     <ReviewRow
-                      label="Código do Documento"
+                      label="Nome do Documento"
                       value={codigoDocumento || null}
                     />
+                    {/* Campo ART oculto por enquanto
                     <ReviewRow
                       label="ART"
                       value={artNumero || null}
                     />
+                    */}
                   </div>
 
                   {/* Cover image preview */}
@@ -1281,7 +1286,7 @@ export function ComplementForm({
                   )}
                 </div>
 
-                {/* Revisions summary */}
+                {/* Revisions summary — oculto por enquanto, revisão será preenchida após gerar PDF
                 {revisions.length > 0 && (
                   <div className={css.reviewSection}>
                     <div className={css.reviewTitle}>
@@ -1311,6 +1316,7 @@ export function ComplementForm({
                     </div>
                   </div>
                 )}
+                */}
 
                 {/* Images summary (Seção 18) */}
                 <div className={css.reviewSection}>
