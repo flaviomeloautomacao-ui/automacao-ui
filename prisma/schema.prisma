@@ -130,14 +130,40 @@ model Report {
   observacoesGerais       String?   @map("observacoes_gerais") @db.Text
   observacoesGeraisPrompt String?   @map("observacoes_gerais_prompt") @db.Text
 
+  // Feature 1: Imagem de Capa
+  coverImageUrl      String?   @map("cover_image_url")
+  coverImagePublicId String?   @map("cover_image_public_id")
+
+  // Feature 5: Encerramento
+  artNumero       String?   @map("art_numero")
+  codigoDocumento String?   @map("codigo_documento")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relações
   job        Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
   equipments ReportEquipment[]
+  revisions  ReportRevision[]
 
   @@map("reports")
+}
+
+model ReportRevision {
+  id          String   @id @default(uuid()) @db.Uuid
+  reportId    String   @map("report_id") @db.Uuid
+  version     String   // ex: "00", "01", "02"
+  date        String   // ex: "24/03/2026"
+  author      String   // ex: "Eng. Francisco Flávio Melo Cavalcante"
+  description String   // ex: "Emissão inicial"
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relações
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("report_revisions")
 }
 
 model ReportEquipment {

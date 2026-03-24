@@ -39,9 +39,15 @@ export default async function ComplementPage({ params }: PageProps) {
     },
   });
 
+  const revisions = await prisma.reportRevision.findMany({
+    where: { reportId: report.id },
+    orderBy: { version: "asc" },
+  });
+
   // Serialize dates to ISO strings for client component
   const serializedReport = JSON.parse(JSON.stringify(report));
   const serializedEquipments = JSON.parse(JSON.stringify(equipments));
+  const serializedRevisions = JSON.parse(JSON.stringify(revisions));
 
   return (
     <main>
@@ -49,6 +55,7 @@ export default async function ComplementPage({ params }: PageProps) {
         jobId={id}
         report={serializedReport}
         equipments={serializedEquipments}
+        revisions={serializedRevisions}
       />
     </main>
   );

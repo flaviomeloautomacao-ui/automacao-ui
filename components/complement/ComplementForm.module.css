@@ -188,6 +188,119 @@
 
 /* ─── Dropzone (batch image upload) ──────────────────── */
 
+/* ─── Cover image section (Feature 1) ────────────────── */
+
+.coverSection {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.coverDropzone {
+  padding: var(--space-4) var(--space-3);
+}
+
+.coverPreview {
+  position: relative;
+  display: inline-block;
+  margin-top: var(--space-2);
+}
+
+.coverImg {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.coverRemoveBtn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  background: rgba(220, 38, 38, 0.9);
+  color: #fff;
+  border: none;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.coverRemoveBtn:hover {
+  background: #b91c1c;
+}
+
+/* ─── Revision table section (Feature 2) ─────────────── */
+
+.revisionSection {
+  margin-top: var(--space-4);
+}
+
+.revisionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.revisionTableWrap {
+  overflow-x: auto;
+}
+
+.revisionTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.revisionTable th {
+  text-align: left;
+  padding: var(--space-2) var(--space-2);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom: 2px solid var(--border);
+}
+
+.revisionTable td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.inputSmall {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  font-size: var(--text-sm);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.inputSmall:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.revisionRemoveBtn {
+  background: none;
+  border: none;
+  color: var(--error);
+  cursor: pointer;
+  font-size: var(--text-base);
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.revisionRemoveBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
 .dropzone {
   display: flex;
   flex-direction: column;

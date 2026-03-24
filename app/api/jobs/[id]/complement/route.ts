@@ -72,7 +72,12 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    return success({ report, equipments });
+    const revisions = await prisma.reportRevision.findMany({
+      where: { reportId: report.id },
+      orderBy: { version: "asc" },
+    });
+
+    return success({ report, equipments, revisions });
   } catch (err) {
     console.error(`[GET /api/jobs/complement]`, err);
     return error("INTERNAL_ERROR", "Failed to fetch complement data", 500);
@@ -88,6 +93,8 @@ interface PatchReportInput {
   dataAvaliacao?: string; // ISO-8601
   contrato?: string;
   observacoesGerais?: string;
+  artNumero?: string;
+  codigoDocumento?: string;
 }
 
 interface PatchEquipmentInput {
@@ -97,9 +104,17 @@ interface PatchEquipmentInput {
   observacoesExtras?: string;
 }
 
+interface RevisionInput {
+  version: string;
+  date: string;
+  author: string;
+  description: string;
+}
+
 interface PatchComplementBody {
   report?: PatchReportInput;
   equipments?: PatchEquipmentInput[];
+  revisions?: RevisionInput[];
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
@@ -117,10 +132,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return error("INVALID_JSON", "Request body must be valid JSON");
     }
 
-    if (!body.report && !body.equipments) {
+    if (!body.report && !body.equipments && !body.revisions) {
       return error(
         "EMPTY_PAYLOAD",
-        "At least 'report' or 'equipments' must be provided",
+        "At least 'report', 'equipments' or 'revisions' must be provided",
       );
     }
 
@@ -168,6 +183,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             dataAvaliacao,
             contrato,
             observacoesGerais,
+            artNumero,
+            codigoDocumento,
           } = body.report;
 
           // Seção 7: Normalizar observações → prompt simplificado (sem LLM)
@@ -190,8 +207,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
               ...(observacoesGeraisPrompt !== undefined && {
                 observacoesGeraisPrompt,
               }),
+              ...(artNumero !== undefined && { artNumero }),
+              ...(codigoDocumento !== undefined && { codigoDocumento }),
             },
           });
+        }
+
+        // Revisions — delete all and recreate (replace strategy)
+        if (body.revisions) {
+          await tx.reportRevision.deleteMany({
+            where: { reportId: report.id },
+          });
+
+          if (body.revisions.length > 0) {
+            await tx.reportRevision.createMany({
+              data: body.revisions.map((rev) => ({
+                reportId: report.id,
+                version: rev.version,
+                date: rev.date,
+                author: rev.author,
+                description: rev.description,
+              })),
+            });
+          }
         }
 
         // Equipment updates — run in parallel inside the transaction

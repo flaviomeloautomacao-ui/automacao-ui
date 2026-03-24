@@ -40,6 +40,14 @@ export interface ComplementEquipment {
   images: ComplementImage[];
 }
 
+export interface ComplementRevision {
+  id?: string;
+  version: string;
+  date: string;
+  author: string;
+  description: string;
+}
+
 export interface ComplementReport {
   id: string;
   jobId: string;
@@ -54,6 +62,10 @@ export interface ComplementReport {
   responsavel: string | null;
   registroProfissional: string | null;
   observacoesGerais: string | null;
+  coverImageUrl: string | null;
+  coverImagePublicId: string | null;
+  artNumero: string | null;
+  codigoDocumento: string | null;
 }
 
 /* ================================================================== */
@@ -93,6 +105,7 @@ interface ComplementFormProps {
   jobId: string;
   report: ComplementReport;
   equipments: ComplementEquipment[];
+  revisions: ComplementRevision[];
 }
 
 /* ================================================================== */
@@ -110,10 +123,17 @@ const STEP_LABELS = [
 /*  Component                                                          */
 /* ================================================================== */
 
+const DEFAULT_AUTHOR = "Eng. Francisco Flávio Melo Cavalcante";
+
+function formatDateBR(d: Date = new Date()): string {
+  return d.toLocaleDateString("pt-BR");
+}
+
 export function ComplementForm({
   jobId,
   report,
   equipments: initialEquipments,
+  revisions: initialRevisions,
 }: ComplementFormProps) {
   const router = useRouter();
 
@@ -124,6 +144,32 @@ export function ComplementForm({
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+
+  // ── Cover image state (Feature 1) ──────────────────────
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(
+    report.coverImageUrl ?? null,
+  );
+  const [uploadingCover, setUploadingCover] = useState(false);
+
+  // ── Revisions state (Feature 2) ────────────────────────
+  const [revisions, setRevisions] = useState<ComplementRevision[]>(
+    initialRevisions.length > 0
+      ? initialRevisions
+      : [
+        {
+          version: "00",
+          date: formatDateBR(),
+          author: DEFAULT_AUTHOR,
+          description: "Emissão inicial",
+        },
+      ],
+  );
+
+  // ── Document fields state (Feature 5) ──────────────────
+  const [artNumero, setArtNumero] = useState(report.artNumero ?? "");
+  const [codigoDocumento, setCodigoDocumento] = useState(
+    report.codigoDocumento ?? "",
+  );
 
   // ── Image state ──────────────────────────────────────────
   const [imagesByEq, setImagesByEq] = useState<
@@ -180,6 +226,77 @@ export function ComplementForm({
     name: "equipments",
   });
 
+  // ── Cover image handlers ──────────────────────────────
+  async function handleCoverUpload(file: File) {
+    setUploadingCover(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/jobs/${jobId}/cover-image`, {
+        method: "POST",
+        body: form,
+      });
+      const json: ApiResponse<{
+        coverImageUrl: string;
+        coverImagePublicId: string;
+      }> = await res.json();
+      if (json.error) {
+        alert(json.error.message);
+        return;
+      }
+      setCoverImageUrl(json.data!.coverImageUrl);
+    } catch {
+      alert("Falha ao fazer upload da imagem de capa.");
+    } finally {
+      setUploadingCover(false);
+    }
+  }
+
+  async function handleCoverDelete() {
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/cover-image`, {
+        method: "DELETE",
+      });
+      const json: ApiResponse<{ deleted: boolean }> = await res.json();
+      if (json.error) {
+        alert(json.error.message);
+        return;
+      }
+      setCoverImageUrl(null);
+    } catch {
+      alert("Falha ao remover imagem de capa.");
+    }
+  }
+
+  // ── Revision helpers ──────────────────────────────────
+  function addRevision() {
+    const nextVersion = String(revisions.length).padStart(2, "0");
+    setRevisions((prev) => [
+      ...prev,
+      {
+        version: nextVersion,
+        date: formatDateBR(),
+        author: DEFAULT_AUTHOR,
+        description: "",
+      },
+    ]);
+  }
+
+  function removeRevision(index: number) {
+    if (revisions.length <= 1) return;
+    setRevisions((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateRevision(
+    index: number,
+    field: keyof ComplementRevision,
+    value: string,
+  ) {
+    setRevisions((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)),
+    );
+  }
+
   // ── Save progress ──────────────────────────────────────
   const saveReport = useCallback(async () => {
     const values = getValues();
@@ -193,7 +310,10 @@ export function ComplementForm({
           report: {
             ...values.report,
             dataAvaliacao: values.report.dataAvaliacao || undefined,
+            artNumero,
+            codigoDocumento,
           },
+          revisions,
         }),
       });
       const json: ApiResponse<{ updated: boolean }> = await res.json();
@@ -208,7 +328,8 @@ export function ComplementForm({
     } finally {
       setSaving(false);
     }
-  }, [getValues, jobId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getValues, jobId, artNumero, codigoDocumento, revisions]);
 
   const saveEquipment = useCallback(
     async (eqIndex: number) => {
@@ -607,6 +728,161 @@ export function ComplementForm({
                     </Field>
                   </div>
                 </div>
+
+                {/* ─── Imagem de Capa (Feature 1) ────────────── */}
+                <div className={css.coverSection}>
+                  <span className={css.label}>Imagem de Capa (opcional)</span>
+                  {coverImageUrl ? (
+                    <div className={css.coverPreview}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={coverImageUrl}
+                        alt="Capa do relatório"
+                        className={css.coverImg}
+                      />
+                      <button
+                        type="button"
+                        className={css.coverRemoveBtn}
+                        onClick={handleCoverDelete}
+                      >
+                        ✕ Remover
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      className={`${css.dropzone} ${css.coverDropzone} ${uploadingCover ? css.uploading : ""}`}
+                    >
+                      <span className={css.dropzoneIcon}>🖼️</span>
+                      <span className={css.dropzoneText}>
+                        {uploadingCover
+                          ? "Enviando…"
+                          : "Clique ou arraste a imagem de capa"}
+                      </span>
+                      <span className={css.dropzoneHint}>
+                        JPEG, PNG, WebP — máx. 10MB
+                      </span>
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/jpeg,image/png,image/webp"
+                        disabled={uploadingCover}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleCoverUpload(file);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* ─── Código do Documento e ART (Feature 5) ── */}
+                <div className={css.fieldGrid}>
+                  <Field label="Código do Documento">
+                    <input
+                      className={css.input}
+                      placeholder="Ex: DHA-2026-001"
+                      value={codigoDocumento}
+                      onChange={(e) => setCodigoDocumento(e.target.value)}
+                    />
+                  </Field>
+
+                  <Field label="Número da ART">
+                    <input
+                      className={css.input}
+                      placeholder="Ex: 1234567890"
+                      value={artNumero}
+                      onChange={(e) => setArtNumero(e.target.value)}
+                    />
+                  </Field>
+                </div>
+
+                {/* ─── Tabela de Revisões (Feature 2) ─────────── */}
+                <div className={css.revisionSection}>
+                  <div className={css.revisionHeader}>
+                    <span className={css.label}>Controle de Revisão</span>
+                    <Button
+                      variant="secondary"
+                      onClick={addRevision}
+                      type="button"
+                    >
+                      + Adicionar Revisão
+                    </Button>
+                  </div>
+                  <div className={css.revisionTableWrap}>
+                    <table className={css.revisionTable}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: "10%" }}>Versão</th>
+                          <th style={{ width: "18%" }}>Data</th>
+                          <th style={{ width: "30%" }}>Responsável</th>
+                          <th style={{ width: "35%" }}>Descrição</th>
+                          <th style={{ width: "7%" }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {revisions.map((rev, idx) => (
+                          <tr key={idx}>
+                            <td>
+                              <input
+                                className={css.inputSmall}
+                                value={rev.version}
+                                onChange={(e) =>
+                                  updateRevision(idx, "version", e.target.value)
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                className={css.inputSmall}
+                                value={rev.date}
+                                onChange={(e) =>
+                                  updateRevision(idx, "date", e.target.value)
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                className={css.inputSmall}
+                                value={rev.author}
+                                onChange={(e) =>
+                                  updateRevision(idx, "author", e.target.value)
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                className={css.inputSmall}
+                                value={rev.description}
+                                onChange={(e) =>
+                                  updateRevision(
+                                    idx,
+                                    "description",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>
+                              {revisions.length > 1 && (
+                                <button
+                                  type="button"
+                                  className={css.revisionRemoveBtn}
+                                  onClick={() => removeRevision(idx)}
+                                  title="Remover revisão"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </CardBody>
             <CardFooter>
@@ -947,7 +1223,34 @@ export function ComplementForm({
                       label="Contrato"
                       value={values.report.contrato}
                     />
+                    <ReviewRow
+                      label="Código do Documento"
+                      value={codigoDocumento || null}
+                    />
+                    <ReviewRow
+                      label="ART"
+                      value={artNumero || null}
+                    />
                   </div>
+
+                  {/* Cover image preview */}
+                  {coverImageUrl && (
+                    <div style={{ marginTop: "var(--space-3)" }}>
+                      <span className={css.reviewLabel}>Imagem de Capa</span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={coverImageUrl}
+                        alt="Capa"
+                        style={{
+                          maxWidth: "120px",
+                          maxHeight: "80px",
+                          borderRadius: "var(--radius-md)",
+                          marginTop: "var(--space-1)",
+                          display: "block",
+                        }}
+                      />
+                    </div>
+                  )}
 
                   {/* Static elaboration */}
                   <div
@@ -977,6 +1280,37 @@ export function ComplementForm({
                     </div>
                   )}
                 </div>
+
+                {/* Revisions summary */}
+                {revisions.length > 0 && (
+                  <div className={css.reviewSection}>
+                    <div className={css.reviewTitle}>
+                      Controle de Revisão ({revisions.length})
+                    </div>
+                    <div className={css.revisionTableWrap}>
+                      <table className={css.revisionTable}>
+                        <thead>
+                          <tr>
+                            <th>Versão</th>
+                            <th>Data</th>
+                            <th>Responsável</th>
+                            <th>Descrição</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {revisions.map((rev, idx) => (
+                            <tr key={idx}>
+                              <td>{rev.version}</td>
+                              <td>{rev.date}</td>
+                              <td>{rev.author}</td>
+                              <td>{rev.description}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 {/* Images summary (Seção 18) */}
                 <div className={css.reviewSection}>
