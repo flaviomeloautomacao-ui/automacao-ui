@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 import css from "./Sidebar.module.css";
 
 const NAV_ITEMS = [
@@ -33,10 +34,20 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: "/users/register",
+    label: "Novo Usuário",
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor">
+        <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 00-6 6h12a6 6 0 00-6-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
+      </svg>
+    ),
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
 
   const toggle = useCallback(() => setOpen((v) => !v), []);
@@ -98,7 +109,18 @@ export function Sidebar() {
         </nav>
 
         <div className={css.footer}>
-          Konis Automação v1.0
+          {session?.user?.email && (
+            <span className={css.userEmail}>{session.user.email}</span>
+          )}
+          <button
+            className={css.logoutBtn}
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+              <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
+            </svg>
+            Sair
+          </button>
         </div>
       </aside>
     </>

@@ -10,6 +10,19 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Auth ─────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String   // bcrypt hash
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
 // ─── Enums ────────────────────────────────────────────────
 
 enum JobStatus {
