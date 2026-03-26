@@ -71,3 +71,55 @@ export interface PythonServiceData {
 }
 
 export type PythonServiceResponse = ApiResponse<PythonServiceData>;
+
+// ─── Custos LLM ──────────────────────────────────────────
+
+export interface CostSummary {
+  totalCostUsd: number;
+  totalTokens: number;
+  callCount: number;
+}
+
+export interface CostAggregate {
+  costUsd: number;
+  tokens: number;
+  calls: number;
+}
+
+export interface CostRecord {
+  id: string;
+  flow: string;
+  step: string;
+  provider: string;
+  model: string;
+  callType: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  tokensSource: string;
+  estimatedCostUsd: number;
+  durationMs: number;
+  success: boolean;
+  errorMessage: string | null;
+  retryAttempt: number | null;
+  equipmentName: string | null;
+  promptChars: number;
+  responseChars: number;
+  createdAt: string;
+}
+
+export interface PipelineVersionInfo {
+  id: string;
+  llmModel: string;
+  embeddingModel: string;
+  ragStrategy: string;
+  createdAt: string;
+}
+
+export interface CostBreakdownResponse {
+  summary: CostSummary;
+  byStep: Record<string, CostAggregate>;
+  byEquipment: Record<string, CostAggregate>;
+  pipelineVersion: PipelineVersionInfo | null;
+  records: CostRecord[];
+}

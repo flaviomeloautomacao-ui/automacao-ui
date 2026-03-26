@@ -55,6 +55,25 @@ export default function Home() {
               </svg>
             </span>
           </Link>
+          <Link href="/llm-costs" className={css.actionCard}>
+            <div className={`${css.actionIcon} ${css.iconJobs}`}>
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <div className={css.actionTitle}>Custos LLM</div>
+              <p className={css.actionDesc}>
+                Monitore o uso e custo de IA em cada processo, com visão técnica detalhada.
+              </p>
+            </div>
+            <span className={css.actionArrow}>
+              Monitorar
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </span>
+          </Link>
         </div>
 
         {/* Flow Diagram */}

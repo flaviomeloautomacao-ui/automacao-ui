@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Card, CardHeader, CardBody, CardFooter, Progress, Button, Stepper } from "@/components/ui";
 import { JobStatusBadge } from "@/components/jobs/JobStatusBadge";
+import { CostSummaryCard } from "@/components/jobs/CostSummaryCard";
 import type { ApiResponse, Job, JobStep, JobDetailResponse } from "@/lib/types";
 import { POLL_INTERVAL_MS, MAX_POLL_CYCLES, TERMINAL_STATUSES } from "@/lib/constants";
 import Link from "next/link";
@@ -327,6 +328,16 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
               </>
             )}
           </dl>
+
+          {/* LLM Cost Summary */}
+          {TERMINAL_STATUSES.has(job.status) && (
+            <CostSummaryCard
+              jobId={job.id}
+              llmCostUsd={(job as Record<string, unknown>).llmCostUsd as number | null}
+              llmTotalTokens={(job as Record<string, unknown>).llmTotalTokens as number | null}
+              llmCallCount={(job as Record<string, unknown>).llmCallCount as number | null}
+            />
+          )}
         </div>
       </CardBody>
 

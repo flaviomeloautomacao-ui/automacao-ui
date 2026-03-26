@@ -2,6 +2,7 @@ import type { Job } from "@/lib/types";
 import { JobStatusBadge } from "./JobStatusBadge";
 import { JobActions } from "./JobActions";
 import { Progress } from "@/components/ui";
+import { formatCostUsd } from "@/lib/formatCost";
 import styles from "./JobsTable.module.css";
 
 interface JobsTableProps {
@@ -48,6 +49,7 @@ export function JobsTable({ jobs }: JobsTableProps) {
                 <th>Perfil</th>
                 <th>Status</th>
                 <th>Progresso</th>
+                <th>Custo</th>
                 <th>Criado em</th>
                 <th>Ações</th>
               </tr>
@@ -66,6 +68,11 @@ export function JobsTable({ jobs }: JobsTableProps) {
                       showValue
                       color={progressColor(job.status)}
                     />
+                  </td>
+                  <td className={styles.cost}>
+                    {(job as Record<string, unknown>).llmCostUsd != null
+                      ? formatCostUsd((job as Record<string, unknown>).llmCostUsd as number)
+                      : "—"}
                   </td>
                   <td className={styles.date}>{formatDate(job.createdAt)}</td>
                   <td>

@@ -58,10 +58,22 @@ model Job {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // ─── Observabilidade LLM (v2) ────────────────────────────
+  inputHash          String?   @unique @map("input_hash")
+  llmCostUsd         Float?    @map("llm_cost_usd")
+  llmTotalTokens     Int?      @map("llm_total_tokens")
+  llmCallCount       Int?      @map("llm_call_count")
+  pipelineVersionId  String?   @map("pipeline_version_id")
+  dedupSourceJobId   String?   @map("dedup_source_job_id") @db.Uuid
+
   // Relações
   spreadsheetUpload SpreadsheetUpload?
   steps             JobStep[]
   report            Report?
+  llmUsageLogs      LlmUsageLog[]
+  pipelineVersion   PipelineVersion?   @relation(fields: [pipelineVersionId], references: [id])
+  dedupSourceJob    Job?               @relation("JobDedup", fields: [dedupSourceJobId], references: [id])
+  dedupDerivedJobs  Job[]              @relation("JobDedup")
 
   @@map("jobs")
 }
@@ -231,4 +243,68 @@ model konis_db {
   content   String?
   metadata  Json?
   embedding Unsupported("vector")?
+}
+
+// ─── Observabilidade LLM (v2) ─────────────────────────────
+
+model LlmUsageLog {
+  id               String   @id @default(uuid()) @db.Uuid
+  jobId            String   @map("job_id") @db.Uuid
+
+  flow             String
+  step             String
+  provider         String
+  model            String
+  callType         String   @map("call_type")
+
+  inputTokens      Int      @default(0) @map("input_tokens")
+  outputTokens     Int      @default(0) @map("output_tokens")
+  totalTokens      Int      @default(0) @map("total_tokens")
+  tokensSource     String   @default("estimate") @map("tokens_source")
+
+  estimatedCostUsd Float    @default(0.0) @map("estimated_cost_usd")
+  durationMs       Float    @default(0.0) @map("duration_ms")
+
+  success          Boolean  @default(true)
+  errorMessage     String?  @map("error_message") @db.Text
+  retryAttempt     Int?     @map("retry_attempt")
+
+  equipmentName    String?  @map("equipment_name")
+
+  promptChars      Int      @default(0) @map("prompt_chars")
+  responseChars    Int      @default(0) @map("response_chars")
+
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  job              Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([jobId, step])
+  @@index([createdAt])
+  @@map("llm_usage_logs")
+}
+
+model PipelineVersion {
+  id               String   @id @default(cuid())
+
+  promptVersion    String   @map("prompt_version")
+  schemaVersion    String   @map("schema_version")
+  ragStrategy      String   @map("rag_strategy")
+  llmModel         String   @map("llm_model")
+  embeddingModel   String   @map("embedding_model")
+
+  promptHash       String   @map("prompt_hash")
+  schemaHash       String   @map("schema_hash")
+
+  ragTopK          Int      @map("rag_top_k")
+  ragMaxChunks     Int      @map("rag_max_chunks")
+  ragMinScore      Float    @map("rag_min_score")
+
+  configSnapshot   Json     @map("config_snapshot")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  jobs             Job[]
+
+  @@index([promptHash, schemaHash])
+  @@map("pipeline_versions")
 }

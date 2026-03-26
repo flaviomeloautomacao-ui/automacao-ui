@@ -1,0 +1,411 @@
+/* ═══════════════════════════════════════════════════════════
+   LLM Costs Dashboard — CSS Module
+   Painel de observabilidade com visão técnica ampla
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Layout ── */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.pageTitle {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pageDesc {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}
+
+.periodSelector {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.periodBtn {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.periodBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.periodBtnActive {
+  background: var(--accent);
+  color: var(--text-inverse);
+  border-color: var(--accent);
+}
+
+/* ── Summary KPI Cards ── */
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+
+.kpiCard {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  transition: box-shadow var(--transition-fast);
+}
+
+.kpiCard:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.kpiLabel {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.kpiIcon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
+}
+
+.kpiValue {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.kpiSub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+}
+
+/* ── Section Panels ── */
+
+.panelsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.panel {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.panelFull {
+  composes: panel;
+  grid-column: 1 / -1;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.panelTitle {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.panelBadge {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+}
+
+.panelBody {
+  padding: var(--space-4) var(--space-5);
+}
+
+/* ── Tables ── */
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.dataTable th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.dataTable td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--bg-tertiary);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.dataTable tr:last-child td {
+  border-bottom: none;
+}
+
+.dataTable tr:hover td {
+  background: var(--bg-secondary);
+}
+
+.monoCell {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.costCell {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--warning);
+}
+
+.successBadge {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--success);
+}
+
+.errorBadge {
+  composes: successBadge;
+  background: var(--error);
+}
+
+/* ── Cost bar (inline mini-bar) ── */
+
+.costBarWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.costBar {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.costBarFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-base);
+}
+
+.costBarFillWarning {
+  composes: costBarFill;
+  background: var(--warning);
+}
+
+.costBarValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  min-width: 52px;
+  text-align: right;
+}
+
+/* ── Timeline bar chart ── */
+
+.timelineChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 120px;
+  padding: var(--space-2) 0;
+}
+
+.timelineBar {
+  flex: 1;
+  min-width: 12px;
+  background: var(--accent);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--transition-fast);
+}
+
+.timelineBar:hover {
+  background: var(--accent-hover);
+}
+
+.timelineTooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+  color: var(--text-primary);
+}
+
+.timelineBar:hover .timelineTooltip {
+  display: block;
+}
+
+.timelineLabels {
+  display: flex;
+  justify-content: space-between;
+  padding-top: var(--space-1);
+}
+
+.timelineLabel {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+}
+
+/* ── Expand/Collapse Button ── */
+
+.expandBtn {
+  font-size: var(--text-xs);
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.expandBtn:hover {
+  background: var(--accent-light);
+}
+
+/* ── Status pill ── */
+
+.statusPill {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  text-transform: capitalize;
+}
+
+.statusDone {
+  composes: statusPill;
+  background: var(--success-light);
+  color: var(--success-text);
+}
+
+.statusError {
+  composes: statusPill;
+  background: var(--error-light);
+  color: var(--error-text);
+}
+
+.statusProcessing {
+  composes: statusPill;
+  background: var(--info-light);
+  color: var(--info-text);
+}
+
+.statusDefault {
+  composes: statusPill;
+  background: var(--neutral-light);
+  color: var(--text-secondary);
+}
+
+/* ── Loading / Empty ── */
+
+.loading {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.empty {
+  text-align: center;
+  padding: var(--space-6);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 900px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .panelsRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dataTable {
+    font-size: var(--text-xs);
+  }
+
+  .dataTable th,
+  .dataTable td {
+    padding: var(--space-1) var(--space-2);
+  }
+}

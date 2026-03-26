@@ -91,9 +91,13 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
 
     // 4. Dispatch to Python service
     try {
+      const pyHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      if (process.env.INTERNAL_API_KEY) {
+        pyHeaders["X-Internal-API-Key"] = process.env.INTERNAL_API_KEY;
+      }
       const pyResponse = await fetch(`${PYTHON_SERVICE_URL}/process`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: pyHeaders,
         body: JSON.stringify({ job_id: id }),
       });
 

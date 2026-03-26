@@ -1,0 +1,464 @@
+/* ═══════════════════════════════════════════════════════════
+   ImageDropZone — Unified image upload component
+   Modern drag & drop with loading states
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── Dropzone container ─────────────────────────────── */
+
+.dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  background: var(--bg-secondary);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+  overflow: hidden;
+}
+
+.dropzone:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+/* ─── Drag active state ──────────────────────────────── */
+
+.dragActive {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  transform: scale(1.01);
+}
+
+.dragActive .iconWrap {
+  transform: scale(1.15);
+}
+
+/* ─── Uploading state ────────────────────────────────── */
+
+.uploading {
+  pointer-events: none;
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+/* ─── Disabled state ─────────────────────────────────── */
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* ─── Icon ───────────────────────────────────────────── */
+
+.iconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--radius-lg);
+  background: var(--accent-subtle);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.dragActive .iconWrap {
+  background: var(--accent);
+}
+
+.icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--accent);
+  transition: color 0.2s ease;
+}
+
+.dragActive .icon {
+  color: white;
+}
+
+/* ─── Text content ───────────────────────────────────── */
+
+.textWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.mainText {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.mainText .accent {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ─── Progress bar ───────────────────────────────────── */
+
+.progressWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 280px;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.progressBarIndeterminate {
+  height: 100%;
+  width: 40%;
+  background: var(--accent);
+  border-radius: 9999px;
+  animation: indeterminateSlide 1.2s ease-in-out infinite;
+}
+
+@keyframes indeterminateSlide {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(200%); }
+  100% { transform: translateX(-100%); }
+}
+
+.progressText {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* ─── Spinner ────────────────────────────────────────── */
+
+.spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2.5px solid var(--accent-subtle);
+  border-top-color: var(--accent);
+  border-radius: 9999px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Preview area ───────────────────────────────────── */
+
+.previewContainer {
+  position: relative;
+  display: inline-flex;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s ease;
+}
+
+.previewContainer:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.previewImage {
+  display: block;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.previewOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.2s ease;
+  opacity: 0;
+}
+
+.previewContainer:hover .previewOverlay {
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 1;
+}
+
+.previewAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: none;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  font-family: inherit;
+}
+
+.previewAction:active {
+  transform: scale(0.96);
+}
+
+.replaceBtn {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--text-primary);
+}
+
+.replaceBtn:hover {
+  background: #fff;
+}
+
+.deleteBtn {
+  background: rgba(220, 38, 38, 0.9);
+  color: #fff;
+}
+
+.deleteBtn:hover {
+  background: #dc2626;
+}
+
+/* ─── Image grid (multi mode) ────────────────────────── */
+
+.imageGridWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.imageGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.thumb {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.thumb:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0);
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.thumb:hover .thumbOverlay {
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 1;
+}
+
+.thumbDelete {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: rgba(220, 38, 38, 0.9);
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.thumbDelete:hover {
+  background: #b91c1c;
+  transform: scale(1.1);
+}
+
+.thumbUploading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.thumbSpinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2.5px solid var(--accent-subtle);
+  border-top-color: var(--accent);
+  border-radius: 9999px;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ─── Add button (inline in grid) ────────────────────── */
+
+.addButton {
+  width: 88px;
+  height: 88px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  cursor: pointer;
+  color: var(--text-muted);
+  background: transparent;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.addButton:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.addIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+  font-weight: 300;
+}
+
+.addText {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Count badge ────────────────────────────────────── */
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: 9999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+/* ─── Compact variant ────────────────────────────────── */
+
+.compact {
+  padding: var(--space-4) var(--space-3);
+}
+
+.compact .iconWrap {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.compact .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* ─── Cover variant (larger preview) ─────────────────── */
+
+.coverPreview .previewImage {
+  max-height: 200px;
+}
+
+/* ─── Responsive ─────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .dropzone {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .thumb {
+    width: 72px;
+    height: 72px;
+  }
+
+  .addButton {
+    width: 72px;
+    height: 72px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dropzone {
+    padding: var(--space-3) var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .iconWrap {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .thumb {
+    width: 60px;
+    height: 60px;
+  }
+
+  .addButton {
+    width: 60px;
+    height: 60px;
+  }
+
+  .addText {
+    display: none;
+  }
+}
