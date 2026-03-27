@@ -11,6 +11,9 @@ import { Card, CardHeader, CardBody, CardFooter } from "@/components/ui/Card";
 import type { ApiResponse } from "@/lib/types";
 import {
   matchImagesToEquipments,
+  generateImageName,
+  getNextImageIndex,
+  toPascalCase,
   type ImageMatchResult,
 } from "@/lib/normalizeEquipmentName";
 
@@ -605,6 +608,9 @@ export function ComplementForm({
     setBatchUploading(false);
     setBatchProgress(null);
     setBatchResults((prev) => prev.filter((r) => !r.matched));
+
+    // Auto-advance to next step after batch upload completes
+    goNext();
   }
 
   // ── Pendency computation for review (spec sections 18-19) ──
@@ -909,9 +915,13 @@ export function ComplementForm({
                   Selecione múltiplas imagens para vincular automaticamente aos
                   equipamentos. O nome do arquivo deve seguir o padrão:{" "}
                   <strong>
-                    {getValues("report.contrato") || "<contrato>"}
-                    &lt;nome_equipamento&gt;.jpg
+                    NomeEquipamento_{getValues("report.contrato") || "<ContratoId>"}-0.jpg
                   </strong>
+                  <br />
+                  <span style={{ fontSize: "0.85em", opacity: 0.8 }}>
+                    Exemplo: MoegaFerroviaria1720_{getValues("report.contrato") || "1234"}-0.jpg
+                    — Nome em PascalCase, contrato após _, índice após -
+                  </span>
                 </p>
 
                 {/* Dropzone */}
@@ -962,22 +972,19 @@ export function ComplementForm({
                           </span>
                           <span className={css.batchTarget}>
                             {r.matched
-                              ? `→ ${r.equipmentName}`
-                              : "Sem correspondência"}
+                              ? `→ ${r.equipmentName}${r.imageIndex != null ? ` (índice ${r.imageIndex})` : ""}`
+                              : r.validationErrors.length > 0
+                                ? r.validationErrors.map((e) => e.message).join("; ")
+                                : "Sem correspondência"}
                           </span>
                         </div>
                       ))}
                     </div>
 
-                    {batchResults.some((r) => r.matched) && (
-                      <Button
-                        onClick={executeBatchUpload}
-                        disabled={batchUploading}
-                      >
-                        {batchUploading && batchProgress
-                          ? `Enviando ${batchProgress.current}/${batchProgress.total}…`
-                          : `Enviar ${batchResults.filter((r) => r.matched).length} imagens vinculadas`}
-                      </Button>
+                    {batchResults.some((r) => r.matched) && batchUploading && batchProgress && (
+                      <div className={css.uploadSummary}>
+                        Enviando {batchProgress.current}/{batchProgress.total}…
+                      </div>
                     )}
                   </div>
                 )}
@@ -1016,9 +1023,17 @@ export function ComplementForm({
                   >
                     Pular para Revisão ⏭
                   </Button>
-                  <Button onClick={goNext} disabled={batchUploading}>
-                    Próximo →
-                  </Button>
+                  {batchResults.some((r) => r.matched) ? (
+                    <Button onClick={executeBatchUpload} disabled={batchUploading}>
+                      {batchUploading && batchProgress
+                        ? `Enviando ${batchProgress.current}/${batchProgress.total}…`
+                        : `Enviar ${batchResults.filter((r) => r.matched).length} imagens vinculadas →`}
+                    </Button>
+                  ) : (
+                    <Button onClick={goNext} disabled={batchUploading}>
+                      Próximo →
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardFooter>

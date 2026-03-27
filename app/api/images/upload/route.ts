@@ -3,12 +3,24 @@
  *
  * POST → Recebe imagem via FormData, faz upload ao Cloudinary,
  *         persiste EquipmentImage e retorna dados.
+ *
+ * Naming convention (v2):
+ *   public_id = reports/{reportId}/equipments/{NomeEquipamento}_{ContratoId}-{Index}
+ *   Padrão obrigatório: NomeEquipamentoContrato_ContratoId-Index
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { uploadImageServer } from "@/lib/cloudinaryServer";
 import type { ApiResponse } from "@/lib/types";
+import {
+  generateImageName,
+  toPascalCase,
+  sanitizeContratoId,
+  getNextImageIndex,
+  validateImageFileName,
+  EQUIPMENT_IMAGE_NAME_REGEX,
+} from "@/lib/normalizeEquipmentName";
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -81,22 +93,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify equipment exists
+    // Verify equipment exists and get context for naming
     const equipment = await prisma.reportEquipment.findUnique({
       where: { id: equipmentId },
-      select: { id: true, reportId: true },
+      select: {
+        id: true,
+        reportId: true,
+        equipmentName: true,
+        report: {
+          select: { contrato: true },
+        },
+        images: {
+          select: { publicId: true },
+        },
+      },
     });
 
     if (!equipment) {
       return error("EQUIPMENT_NOT_FOUND", `Equipment ${equipmentId} not found`, 404);
     }
 
-    // Upload to Cloudinary
+    // ── Generate standardized public_id ───────────────────
+    const contratoRaw = equipment.report?.contrato ?? "";
+    const contrato = sanitizeContratoId(contratoRaw);
+    const eqPascal = toPascalCase(equipment.equipmentName);
+
+    // Calculate next available index from existing images
+    const existingNames = equipment.images.map((img) => {
+      // Extract basename from Cloudinary public_id (e.g., "reports/.../MoegaFerroviaria_1234-0")
+      const parts = img.publicId.split("/");
+      return parts[parts.length - 1];
+    });
+    const nextIndex = getNextImageIndex(existingNames);
+
+    const imageName = generateImageName(equipment.equipmentName, contratoRaw, nextIndex);
+    const folder = `reports/${equipment.reportId}/equipments`;
+
+    // Upload to Cloudinary with standardized naming
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
     const cloudinaryResult = await uploadImageServer(buffer, {
-      folder: `reports/${equipment.reportId}/equipments/${equipmentId}`,
+      folder,
+      publicId: imageName,
     });
 
     // Persist record
