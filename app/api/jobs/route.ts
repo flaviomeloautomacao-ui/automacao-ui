@@ -280,13 +280,20 @@ export async function POST(request: NextRequest) {
     }
 
     // 9. Retorno — front redireciona para complementação
-    return success(
-      {
-        jobId: job.id,
-        redirectTo: `/jobs/${job.id}/complement`,
-      },
-      201,
-    );
+    const responseData: Record<string, unknown> = {
+      jobId: job.id,
+      redirectTo: `/jobs/${job.id}/complement`,
+    };
+
+    // Incluir avisos da matriz de cruzamento (não-bloqueantes)
+    if (validation.warnings.length > 0) {
+      responseData.warnings = validation.warnings;
+      console.warn(
+        `[POST /api/jobs] ${validation.warnings.length} aviso(s) da matriz de cruzamento para job ${job.id}`,
+      );
+    }
+
+    return success(responseData, 201);
   } catch (err) {
     console.error("[POST /api/jobs]", err);
     return error("INTERNAL_ERROR", "Falha ao criar o job.", 500);

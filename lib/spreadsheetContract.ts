@@ -17,12 +17,15 @@
  *   ;;Revisão:;000;;;;;;;
  *   ;;;;;;;;;;
  *
- * Linha 6 (cabeçalho):
- *   Equipamento;Descrição do equipamento;Riscos;Perigo;
+ * Linha 6 (cabeçalho — V3, 14 colunas):
+ *   Equipamento;Descrição do equipamento;Perigo;Riscos;
  *   Causas Possíveis;Consequências;
- *   Categoria da Severidade;Categoria do Risco;
- *   Medidas Preventivas Existentes;Medidas Preventivas a Implementar;
- *   Observações;Coluna1
+ *   Medidas Preventivas Existentes;
+ *   Categoria da Severidade;Categoria da Probabilidade;
+ *   Classificação do Risco;
+ *   Medidas Preventivas a Implementar;
+ *   Categoria da Severidade 2;Categoria da Probabilidade 2;
+ *   Classificação do Risco 2
  *
  * Linha 7+ (dados):
  *   Campos multiline são delimitados por aspas duplas.
@@ -62,12 +65,71 @@ export interface SpreadsheetMetadata {
 export interface ValidationResult {
   valid: boolean;
   errors: RowValidationError[];
+  /** Avisos que não impedem o processamento (ex.: inconsistências na matriz de cruzamento) */
+  warnings: RowValidationError[];
   /** Linhas de dados normalizadas (sem metadados do cabeçalho) */
   rows: Record<string, string>[];
   /** Número total de linhas de dados encontradas */
   rowCount: number;
   /** Metadados extraídos do topo da planilha */
   metadata: SpreadsheetMetadata;
+}
+
+// ─── Matriz de Cruzamento Severidade × Probabilidade → Classificação do Risco ──
+
+/**
+ * Matriz de cruzamento padrão (5×4) para validação não-bloqueante.
+ * Chave: "severidade|probabilidade" (lowercase). Valor: classificação esperada (lowercase).
+ */
+const RISK_MATRIX: Record<string, string> = {
+  // Severidade Baixa
+  "baixa|baixo": "baixo",
+  "baixa|médio": "baixo",
+  "baixa|alto": "médio",
+  "baixa|muito alto": "médio",
+  // Severidade Média
+  "média|baixo": "baixo",
+  "média|médio": "médio",
+  "média|alto": "alto",
+  "média|muito alto": "alto",
+  // Severidade Média para Alta
+  "média para alta|baixo": "médio",
+  "média para alta|médio": "alto",
+  "média para alta|alto": "alto",
+  "média para alta|muito alto": "muito alto",
+  // Severidade Alta
+  "alta|baixo": "médio",
+  "alta|médio": "alto",
+  "alta|alto": "alto",
+  "alta|muito alto": "muito alto",
+  // Severidade Muito Alta
+  "muito alta|baixo": "alto",
+  "muito alta|médio": "alto",
+  "muito alta|alto": "muito alto",
+  "muito alta|muito alto": "muito alto",
+};
+
+/** Normaliza gênero (masculino/feminino) para a forma feminina (severidade) */
+function _toFeminine(v: string): string {
+  const map: Record<string, string> = {
+    "baixo": "baixa", "baixa": "baixa",
+    "médio": "média", "média": "média",
+    "alto": "alta", "alta": "alta",
+    "muito alto": "muito alta", "muito alta": "muito alta",
+    "média para alta": "média para alta",
+  };
+  return map[v] ?? v;
+}
+
+/** Normaliza gênero para a forma masculina (probabilidade / classificação) */
+function _toMasculine(v: string): string {
+  const map: Record<string, string> = {
+    "baixa": "baixo", "baixo": "baixo",
+    "média": "médio", "médio": "médio",
+    "alta": "alto", "alto": "alto",
+    "muito alta": "muito alto", "muito alto": "muito alto",
+  };
+  return map[v] ?? v;
 }
 
 // ─── Colunas Esperadas ────────────────────────────────────
@@ -79,8 +141,12 @@ export interface ValidationResult {
  * Os nomes são comparados em lowercase/trim com o cabeçalho real.
  *
  * Valores reais observados na planilha-modelo:
- *   Categoria da Severidade → Baixa, Média, Alta, Muito Alta, Média para Alta
- *   Categoria do Risco      → Baixo, Médio, Alto, Muito Alto
+ *   Categoria da Severidade      → Baixa, Média, Alta, Muito Alta, Média para Alta
+ *   Categoria da Probabilidade    → Baixo, Médio, Alto, Muito Alto
+ *   Classificação do Risco        → Baixo, Médio, Alto, Muito Alto
+ *   Categoria da Severidade 2     → (mesmos valores, pós-implementação)
+ *   Categoria da Probabilidade 2  → (mesmos valores, pós-implementação)
+ *   Classificação do Risco 2      → (mesmos valores, pós-implementação)
  */
 export const COLUMNS: ColumnDef[] = [
   {
@@ -124,25 +190,37 @@ export const COLUMNS: ColumnDef[] = [
     type: "enum",
     required: true,
     enumValues: [
-      "baixa",
-      "média",
-      "alta",
-      "muito alta",
+      "baixa", "baixo",
+      "média", "médio",
+      "alta", "alto",
+      "muito alta", "muito alto",
       "média para alta",
     ],
     label: "Categoria da Severidade",
   },
   {
-    name: "Categoria do Risco",
+    name: "Categoria da Probabilidade",
     type: "enum",
     required: true,
     enumValues: [
-      "baixo",
-      "médio",
-      "alto",
-      "muito alto",
+      "baixo", "baixa",
+      "médio", "média",
+      "alto", "alta",
+      "muito alto", "muito alta",
     ],
-    label: "Categoria do Risco",
+    label: "Categoria da Probabilidade",
+  },
+  {
+    name: "Classificação do Risco",
+    type: "enum",
+    required: true,
+    enumValues: [
+      "baixo", "baixa",
+      "médio", "média",
+      "alto", "alta",
+      "muito alto", "muito alta",
+    ],
+    label: "Classificação do Risco",
   },
   {
     name: "Medidas Preventivas Existentes",
@@ -162,6 +240,43 @@ export const COLUMNS: ColumnDef[] = [
     required: false,
     label: "Observações",
   },
+  {
+    name: "Categoria da Severidade 2",
+    type: "enum",
+    required: false,
+    enumValues: [
+      "baixa", "baixo",
+      "média", "médio",
+      "alta", "alto",
+      "muito alta", "muito alto",
+      "média para alta",
+    ],
+    label: "Categoria da Severidade (pós-implementação)",
+  },
+  {
+    name: "Categoria da Probabilidade 2",
+    type: "enum",
+    required: false,
+    enumValues: [
+      "baixo", "baixa",
+      "médio", "média",
+      "alto", "alta",
+      "muito alto", "muito alta",
+    ],
+    label: "Categoria da Probabilidade (pós-implementação)",
+  },
+  {
+    name: "Classificação do Risco 2",
+    type: "enum",
+    required: false,
+    enumValues: [
+      "baixo", "baixa",
+      "médio", "média",
+      "alto", "alta",
+      "muito alto", "muito alta",
+    ],
+    label: "Classificação do Risco (pós-implementação)",
+  },
 ];
 
 // ─── Normalização de Chaves para Python ───────────────────
@@ -178,10 +293,14 @@ export const COLUMN_NORMALIZE_MAP: Record<string, string> = {
   "Causas Possíveis": "causas",
   "Consequências": "consequencias",
   "Categoria da Severidade": "categoria_severidade",
-  "Categoria do Risco": "categoria_risco",
+  "Categoria da Probabilidade": "categoria_probabilidade",
+  "Classificação do Risco": "classificacao_risco",
   "Medidas Preventivas Existentes": "medidas_existentes",
   "Medidas Preventivas a Implementar": "medidas_implementar",
   "Observações": "observacoes",
+  "Categoria da Severidade 2": "categoria_severidade_2",
+  "Categoria da Probabilidade 2": "categoria_probabilidade_2",
+  "Classificação do Risco 2": "classificacao_risco_2",
 };
 
 /**
@@ -327,6 +446,7 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
           message: `Cabeçalho não encontrado. Colunas obrigatórias esperadas: ${COLUMNS.filter((c) => c.required).map((c) => c.name).join(", ")}`,
         },
       ],
+      warnings: [],
       rows: [],
       rowCount: 0,
       metadata: {},
@@ -351,7 +471,7 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
   }
 
   if (errors.length > 0) {
-    return { valid: false, errors, rows: [], rowCount: 0, metadata };
+    return { valid: false, errors, warnings: [], rows: [], rowCount: 0, metadata };
   }
 
   // 4. Extrair linhas de dados (após cabeçalho), filtrar vazias
@@ -368,6 +488,7 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
           message: "A planilha não contém linhas de dados após o cabeçalho.",
         },
       ],
+      warnings: [],
       rows: [],
       rowCount: 0,
       metadata,
@@ -384,6 +505,7 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
           message: `Planilha excede o limite de ${MAX_ROWS} linhas de dados (encontradas: ${nonEmptyRows.length}).`,
         },
       ],
+      warnings: [],
       rows: [],
       rowCount: nonEmptyRows.length,
       metadata,
@@ -443,6 +565,48 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
     normalizedRows.push(normalizedRow);
   }
 
+  // 6. Verificação da matriz de cruzamento (avisos não-bloqueantes)
+  const warnings: RowValidationError[] = [];
+
+  for (let i = 0; i < normalizedRows.length; i++) {
+    const row = normalizedRows[i];
+    const rowNumber = headerIdx + 2 + i;
+
+    // Situação atual
+    const sev = (row["Categoria da Severidade"] ?? "").toLowerCase().trim();
+    const prob = (row["Categoria da Probabilidade"] ?? "").toLowerCase().trim();
+    const classif = (row["Classificação do Risco"] ?? "").toLowerCase().trim();
+
+    if (sev && prob && classif) {
+      const matrixKey = `${_toFeminine(sev)}|${_toMasculine(prob)}`;
+      const expected = RISK_MATRIX[matrixKey];
+      if (expected && _toMasculine(classif) !== expected) {
+        warnings.push({
+          row: rowNumber,
+          column: "Classificação do Risco",
+          message: `Matriz de cruzamento: Severidade "${sev}" × Probabilidade "${prob}" deveria resultar em "${expected}", mas encontrou "${classif}".`,
+        });
+      }
+    }
+
+    // Situação residual (pós-implementação)
+    const sev2 = (row["Categoria da Severidade 2"] ?? "").toLowerCase().trim();
+    const prob2 = (row["Categoria da Probabilidade 2"] ?? "").toLowerCase().trim();
+    const classif2 = (row["Classificação do Risco 2"] ?? "").toLowerCase().trim();
+
+    if (sev2 && prob2 && classif2) {
+      const matrixKey2 = `${_toFeminine(sev2)}|${_toMasculine(prob2)}`;
+      const expected2 = RISK_MATRIX[matrixKey2];
+      if (expected2 && _toMasculine(classif2) !== expected2) {
+        warnings.push({
+          row: rowNumber,
+          column: "Classificação do Risco 2",
+          message: `Matriz de cruzamento (pós-implementação): Severidade "${sev2}" × Probabilidade "${prob2}" deveria resultar em "${expected2}", mas encontrou "${classif2}".`,
+        });
+      }
+    }
+  }
+
   // Limitar erros retornados para evitar payloads enormes
   const MAX_ERRORS = 50;
   const truncatedErrors = errors.slice(0, MAX_ERRORS);
@@ -457,6 +621,7 @@ export function validateSpreadsheet(rawRows: string[][]): ValidationResult {
   return {
     valid: truncatedErrors.length === 0,
     errors: truncatedErrors,
+    warnings,
     rows: normalizedRows,
     rowCount: normalizedRows.length,
     metadata,
