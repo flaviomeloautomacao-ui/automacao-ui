@@ -12,16 +12,16 @@ import css from "./UploadForm.module.css";
 const PROFILES = [
   {
     value: "dust",
-    label: "Poeira Combustível",
-    desc: "Análise de perigos por poeira combustível (ABNT NBR IEC 60079-10-2)",
-    icon: "🏭",
+    label: "DHA",
+    desc: "Dust Hazard Analysis",
+    icon: "",
     cssClass: "dust",
   },
   {
     value: "gas",
-    label: "Gás / Vapores",
-    desc: "Análise de perigos por gases e vapores inflamáveis (ABNT NBR IEC 60079-10-1)",
-    icon: "🔥",
+    label: "Classificação de áreas",
+    desc: "Gás e Poeiras",
+    icon: "",
     cssClass: "gas",
     comingSoon: true,
   },
@@ -155,7 +155,7 @@ export function UploadForm() {
                     {"comingSoon" in p && p.comingSoon && (
                       <span className={css.comingSoonBadge}>Em breve</span>
                     )}
-                    <div className={`${css.profileIcon} ${css[p.cssClass]}`}>{p.icon}</div>
+                    {/* <div className={`${css.profileIcon} ${css[p.cssClass]}`}>{p.icon}</div> */}
                     <span className={css.profileName}>{p.label}</span>
                     <span className={css.profileDesc}>{p.desc}</span>
                   </button>
