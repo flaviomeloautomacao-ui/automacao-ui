@@ -388,29 +388,69 @@ export function extractMetadata(
  */
 export function findHeaderRowIndex(rows: string[][]): number {
   for (let i = 0; i < Math.min(rows.length, MAX_HEADER_SEARCH_ROWS); i++) {
-    const normalizedCells = rows[i].map((c) => c.toLowerCase().trim());
-    const allFound = REQUIRED_COLUMN_NAMES.every((req) =>
-      normalizedCells.some((cell) => cell === req),
-    );
+    const normalizedCells = rows[i].map((c) => _normalizeHeaderCell(c));
+    const allFound = REQUIRED_COLUMN_NAMES.every((req) => {
+      const target = _normalizeHeaderCell(req);
+      return normalizedCells.some((cell) => cell === target);
+    });
     if (allFound) return i;
   }
   return -1;
 }
 
 /**
+ * Normaliza whitespace em texto de cabeçalho:
+ * - Substitui NBSP (\u00a0), tabs e quebras de linha por espaço regular
+ * - Colapsa múltiplos espaços em um só
+ * - Trim final
+ */
+function _normalizeHeaderCell(text: string): string {
+  return text
+    .replace(/[\u00a0\t\n\r]/g, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Aliases alternativos para nomes de colunas.
+ * Cobre variações encontradas em planilhas reais (V1-style names, etc.).
+ */
+const COLUMN_ALIASES: Record<string, string[]> = {
+  "Categoria da Probabilidade": [
+    "categoria do risco",         // V1 — era usado como probabilidade
+  ],
+  "Categoria da Probabilidade 2": [
+    "categoria do risco 2",       // V1-style residual
+    "categoria de probabilidade 2",
+  ],
+};
+
+/**
  * Mapeia os índices de cada coluna definida no contrato.
  * Retorna um mapa coluna-nome → índice-na-linha.
+ *
+ * Usa normalização robusta de whitespace e fallback por aliases
+ * para lidar com variações de formatação em planilhas reais.
  */
 export function buildColumnIndexMap(
   headerRow: string[],
 ): Map<string, number> {
   const map = new Map<string, number>();
-  const normalizedHeader = headerRow.map((h) => h.toLowerCase().trim());
+  const normalizedHeader = headerRow.map((h) => _normalizeHeaderCell(h));
 
   for (const col of COLUMNS) {
-    const idx = normalizedHeader.findIndex(
-      (h) => h === col.name.toLowerCase().trim(),
-    );
+    const target = _normalizeHeaderCell(col.name);
+    let idx = normalizedHeader.findIndex((h) => h === target);
+
+    // Fallback: tentar aliases
+    if (idx === -1 && COLUMN_ALIASES[col.name]) {
+      for (const alias of COLUMN_ALIASES[col.name]) {
+        idx = normalizedHeader.findIndex((h) => h === alias);
+        if (idx !== -1) break;
+      }
+    }
+
     if (idx !== -1) {
       map.set(col.name, idx);
     }
