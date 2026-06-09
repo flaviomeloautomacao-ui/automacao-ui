@@ -5,6 +5,7 @@ import { Card, CardHeader, CardBody, CardFooter, Progress, Button, Stepper } fro
 import { JobStatusBadge } from "@/components/jobs/JobStatusBadge";
 import { CostSummaryCard } from "@/components/jobs/CostSummaryCard";
 import type { ApiResponse, Job, JobStep, JobDetailResponse } from "@/lib/types";
+import { getDocumentTypeLabel, getJobDocumentType } from "@/lib/documents";
 import { POLL_INTERVAL_MS, MAX_POLL_CYCLES, TERMINAL_STATUSES } from "@/lib/constants";
 import Link from "next/link";
 import styles from "./JobDetail.module.css";
@@ -306,7 +307,7 @@ export function JobDetail({ initialJob, initialSteps }: JobDetailProps) {
             <dd className={styles.metaValueMono}>{job.id}</dd>
 
             <dt className={styles.metaLabel}>Perfil</dt>
-            <dd className={styles.metaValue}>{job.profile}</dd>
+            <dd className={styles.metaValue}>{getDocumentTypeLabel(getJobDocumentType(job))}</dd>
 
             {job.rowCount != null && (
               <>

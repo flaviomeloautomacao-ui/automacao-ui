@@ -29,6 +29,18 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+const themeInitScript = `
+(function() {
+  try {
+    var stored = window.localStorage.getItem("konis-theme");
+    var theme = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+    var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
+    document.documentElement.setAttribute("data-theme", resolved);
+  } catch (_) {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,6 +48,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className={`${inter.variable} ${jetbrains.variable}`}>
         <ThemeProvider>
           <AuthProvider>{children}</AuthProvider>

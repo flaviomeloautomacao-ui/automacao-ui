@@ -40,9 +40,23 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       return error("INVALID_ID", "Image ID must be a valid UUID");
     }
 
-    const image = await prisma.equipmentImage.findUnique({
+    const dhaImage = await prisma.dhaEquipmentImage.findUnique({
       where: { id },
     });
+
+    const areaImage = dhaImage
+      ? null
+      : await prisma.areaReportAreaImage.findUnique({
+        where: { id },
+      });
+
+    const legacyImage = (dhaImage || areaImage)
+      ? null
+      : await prisma.equipmentImage.findUnique({
+        where: { id },
+      });
+
+    const image = dhaImage ?? areaImage ?? legacyImage;
 
     if (!image) {
       return error("NOT_FOUND", `Image ${id} not found`, 404);
@@ -52,9 +66,13 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     await deleteImageServer(image.publicId);
 
     // Delete from database
-    await prisma.equipmentImage.delete({
-      where: { id },
-    });
+    if (dhaImage) {
+      await prisma.dhaEquipmentImage.delete({ where: { id } });
+    } else if (areaImage) {
+      await prisma.areaReportAreaImage.delete({ where: { id } });
+    } else {
+      await prisma.equipmentImage.delete({ where: { id } });
+    }
 
     return success({ deleted: true });
   } catch (err) {

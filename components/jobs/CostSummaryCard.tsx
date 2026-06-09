@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { formatCostUsd, formatTokens, formatDuration } from "@/lib/formatCost";
-import type { ApiResponse, CostBreakdownResponse, CostAggregate } from "@/lib/types";
+import type { ApiResponse, CostBreakdownResponse } from "@/lib/types";
 import styles from "./CostSummaryCard.module.css";
 
 interface CostSummaryCardProps {

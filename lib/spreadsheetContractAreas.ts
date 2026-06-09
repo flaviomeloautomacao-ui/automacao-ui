@@ -1,71 +1,31 @@
 /**
- * Contrato da Planilha de Classificação de Áreas (IEC 60079-10-1/10-2)
+ * Contrato oficial da planilha de Classificação de Áreas.
  *
- * Define colunas, tipos esperados e validações para a planilha de
- * classificação de áreas com atmosferas explosivas.
+ * Suporta dois formatos de entrada:
  *
- * A planilha usa formato .xlsx com cabeçalho multi-row (linhas 1-5)
- * e dados a partir da linha 6. Diferente da planilha DHA (CSV),
- * esta é processada via openpyxl no backend Python.
+ * 1. **Modelo oficial** (`docs/sheets_example/Tabela_de_classificacao_Rev_Final.xlsx`)
+ *    — cabeçalho hierárquico em até 5 linhas, células mescladas, layout posicional
+ *    de 21 colunas. Cada fonte de liberação ocupa uma linha e possui colunas
+ *    separadas para Zona 0/1/2/2-adic./20/21/22; o parser explode cada fonte em
+ *    uma linha normalizada por zona ativa.
  *
- * ─── Layout do cabeçalho ──────────────────────────────────────────
+ * 2. **Formato flat (legado)** — cabeçalho snake_case na primeira linha
+ *    (`area_local`, `substancia`, `fonte_liberacao`, …) com uma linha por
+ *    combinação fonte+zona.
  *
- * Row 1: A1="TABELA ANEXO A" | C1=título
- * Row 2: A2="EQUIPAMENTO DE PROCESSO" | D2="Substância Combustível"
- *         F2="Dados de Processo" | I2="Grau de Ventilação"
- *         L2="Fonte de Liberação"
- *         N2="Grupo e Classe de Temperatura (Grupo-T)"
- *         O2="Limite da Zona Distância Horizontal/Vertical (m)"
- * Row 3: Sub-headers de Dados de Processo
- * Row 5: Nomes finais das colunas (A-U)
- * Row 6+: Dados
- *
- * ─── Colunas (21 = A até U) ──────────────────────────────────────
- *
- * A  = Identificação (tag do equipamento)
- * B  = Descrição do equipamento
- * C  = Locação (área/setor da planta)
- * D  = Substância Combustível (merged D:E)
- * E  = (merged com D — ignorar)
- * F  = Temperatura de processo (°C)
- * G  = Pressão de processo (kPa)
- * H  = Volume do equipamento (m³)
- * I  = Tipo de ventilação
- * J  = Grau de ventilação
- * K  = Disponibilidade da ventilação
- * L  = Fonte de liberação — descrição
- * M  = Fonte de liberação — grau
- * N  = Grupo e Classe de Temperatura (campo composto)
- * O  = Zona 0 — extensão
- * P  = Zona 1 (m)
- * Q  = Zona 2 (m)
- * R  = Zona 2 adicional (m) — texto livre
- * S  = Zona 20 — extensão
- * T  = Zona 21 (m)
- * U  = Zona 22 (m)
+ * O detector escolhe o formato automaticamente. Em ambos os casos, o resultado
+ * normalizado segue o mesmo schema (`AREA_COLUMNS`) consumido pelos modelos
+ * Prisma `AreaSpreadsheetRow` / `AreaReportSource`.
  */
 
-// ─── Tipos ────────────────────────────────────────────────
-
-export type ColumnType = "string" | "number" | "enum";
+export type AreaColumnType = "string";
 
 export interface AreaColumnDef {
-  /** Nome do cabeçalho (comparado case-insensitive, trimmed) */
   name: string;
-  /** Letra da coluna no Excel (A-U) */
-  excelColumn: string;
-  /** Índice 0-based da coluna */
-  index: number;
-  /** Tipo esperado do dado */
-  type: ColumnType;
-  /** A coluna é obrigatória (não pode estar vazia)? */
+  key: string;
   required: boolean;
-  /** Valores válidos quando type === 'enum' */
-  enumValues?: string[];
-  /** Descrição legível para mensagens de erro */
-  label?: string;
-  /** Se a coluna é parte de um merge (ex: E merged com D) */
-  merged?: boolean;
+  label: string;
+  type: AreaColumnType;
 }
 
 export interface AreaRowValidationError {
@@ -74,339 +34,553 @@ export interface AreaRowValidationError {
   message: string;
 }
 
-export interface AreaValidationResult {
+export interface AreaSpreadsheetValidationResult {
   valid: boolean;
   errors: AreaRowValidationError[];
   warnings: AreaRowValidationError[];
+  rows: Record<string, string>[];
   rowCount: number;
+  metadata: Record<string, string>;
 }
 
-// ─── Colunas Esperadas ────────────────────────────────────
-
 export const AREA_COLUMNS: AreaColumnDef[] = [
-  {
-    name: "Identificação",
-    excelColumn: "A",
-    index: 0,
-    type: "string",
-    required: true,
-    label: "Tag/Código do equipamento",
-  },
-  {
-    name: "Descrição",
-    excelColumn: "B",
-    index: 1,
-    type: "string",
-    required: true,
-    label: "Descrição do equipamento",
-  },
-  {
-    name: "Locação",
-    excelColumn: "C",
-    index: 2,
-    type: "string",
-    required: false,
-    label: "Área/setor da planta",
-  },
-  {
-    name: "Substância Combustível",
-    excelColumn: "D",
-    index: 3,
-    type: "string",
-    required: true,
-    label: "Substância combustível presente",
-  },
-  {
-    name: "Substância Combustível (merged)",
-    excelColumn: "E",
-    index: 4,
-    type: "string",
-    required: false,
-    label: "Coluna merged com D — ignorar",
-    merged: true,
-  },
-  {
-    name: "Temperatura (°C)",
-    excelColumn: "F",
-    index: 5,
-    type: "number",
-    required: false,
-    label: "Temperatura de processo em °C",
-  },
-  {
-    name: "Pressão (kPa)",
-    excelColumn: "G",
-    index: 6,
-    type: "string",
-    required: false,
-    label: "Pressão de processo em kPa",
-  },
-  {
-    name: "Volume (m³)",
-    excelColumn: "H",
-    index: 7,
-    type: "string",
-    required: false,
-    label: "Volume do equipamento em m³",
-  },
-  {
-    name: "Tipo",
-    excelColumn: "I",
-    index: 8,
-    type: "enum",
-    required: true,
-    enumValues: ["natural", "forçada", "forcada", "mista"],
-    label: "Tipo de ventilação",
-  },
-  {
-    name: "Grau",
-    excelColumn: "J",
-    index: 9,
-    type: "enum",
-    required: true,
-    enumValues: [
-      "baixo", "baixa",
-      "medio", "média", "media", "médio",
-      "alto", "alta",
-    ],
-    label: "Grau de ventilação",
-  },
-  {
-    name: "Disponibilidade",
-    excelColumn: "K",
-    index: 10,
-    type: "enum",
-    required: true,
-    enumValues: ["pobre", "satisfatoria", "satisfatória", "boa"],
-    label: "Disponibilidade da ventilação",
-  },
-  {
-    name: "Descrição",
-    excelColumn: "L",
-    index: 11,
-    type: "enum",
-    required: true,
-    enumValues: [
-      "interno", "escotilha", "flanges", "selo",
-      "respiro", "pvrv", "operação", "operacao",
-    ],
-    label: "Fonte de liberação — descrição",
-  },
-  {
-    name: "Grau",
-    excelColumn: "M",
-    index: 12,
-    type: "enum",
-    required: true,
-    enumValues: [
-      "continua", "contínua",
-      "primaria", "primária",
-      "secundaria", "secundária", "secundario",
-    ],
-    label: "Fonte de liberação — grau",
-  },
-  {
-    name: "Grupo e Classe de Temperatura",
-    excelColumn: "N",
-    index: 13,
-    type: "string",
-    required: false,
-    label: "Grupo e Classe de Temperatura (ex: T 2 (II A))",
-  },
-  {
-    name: "Zona 0",
-    excelColumn: "O",
-    index: 14,
-    type: "string",
-    required: false,
-    label: "Zona 0 — extensão ou NA/interno",
-  },
-  {
-    name: "Zona 1(m)",
-    excelColumn: "P",
-    index: 15,
-    type: "string",
-    required: false,
-    label: "Zona 1 — extensão em metros",
-  },
-  {
-    name: "Zona 2(m)",
-    excelColumn: "Q",
-    index: 16,
-    type: "string",
-    required: false,
-    label: "Zona 2 — extensão em metros",
-  },
-  {
-    name: "Zona 2 adicional(m)",
-    excelColumn: "R",
-    index: 17,
-    type: "string",
-    required: false,
-    label: "Zona 2 adicional — texto livre/extensão",
-  },
-  {
-    name: "Zona 20",
-    excelColumn: "S",
-    index: 18,
-    type: "string",
-    required: false,
-    label: "Zona 20 — extensão ou NA/Interno",
-  },
-  {
-    name: "Zona 21(m)",
-    excelColumn: "T",
-    index: 19,
-    type: "string",
-    required: false,
-    label: "Zona 21 — extensão em metros",
-  },
-  {
-    name: "Zona 22(m)",
-    excelColumn: "U",
-    index: 20,
-    type: "string",
-    required: false,
-    label: "Zona 22 — extensão em metros",
-  },
+  { name: "area_local", key: "area_local", required: true, label: "Área / Local", type: "string" },
+  { name: "area_descricao", key: "area_descricao", required: false, label: "Descrição do Equipamento", type: "string" },
+  { name: "tag_referencia", key: "tag_referencia", required: false, label: "Tag de Referência", type: "string" },
+  { name: "substancia", key: "substancia", required: true, label: "Substância", type: "string" },
+  { name: "fonte_liberacao", key: "fonte_liberacao", required: true, label: "Fonte de Liberação", type: "string" },
+  { name: "grau_liberacao", key: "grau_liberacao", required: true, label: "Grau de Liberação", type: "string" },
+  { name: "ventilacao_tipo", key: "ventilacao_tipo", required: true, label: "Tipo de Ventilação", type: "string" },
+  { name: "grau_ventilacao", key: "grau_ventilacao", required: true, label: "Grau de Ventilação", type: "string" },
+  { name: "disponibilidade_ventilacao", key: "disponibilidade_ventilacao", required: true, label: "Disponibilidade da Ventilação", type: "string" },
+  { name: "zona", key: "zona", required: true, label: "Zona", type: "string" },
+  { name: "extensao", key: "extensao", required: true, label: "Extensão", type: "string" },
+  { name: "grupo", key: "grupo", required: false, label: "Grupo", type: "string" },
+  { name: "classe_temperatura", key: "classe_temperatura", required: false, label: "Classe de Temperatura", type: "string" },
+  { name: "epl", key: "epl", required: false, label: "EPL", type: "string" },
+  { name: "observacoes", key: "observacoes", required: false, label: "Observações", type: "string" },
 ];
 
-// ─── Normalização de Chaves para Python ───────────────────
+const AREA_HEADER_INDEX = new Map(
+  AREA_COLUMNS.map((column) => [column.name.toLowerCase(), column]),
+);
 
-/**
- * Mapeia letra da coluna Excel → chave snake_case usada no backend Python.
- * Compatível com COLUMN_INDEX_MAP em area_context_builder.py.
- */
-export const AREA_COLUMN_NORMALIZE_MAP: Record<string, string> = {
-  "Identificação": "identificacao",
-  "Descrição": "descricao",
-  "Locação": "locacao",
-  "Substância Combustível": "substancia",
-  "Temperatura (°C)": "temperatura_celsius",
-  "Pressão (kPa)": "pressao_kpa",
-  "Volume (m³)": "volume_m3",
-  "Tipo": "ventilacao_tipo",
-  "Grau": "ventilacao_grau",       // col J (ventilação)
-  "Disponibilidade": "ventilacao_disponibilidade",
-  // "Descrição": "fonte_liberacao_descricao", // col L — conflito de nome com col B
-  // "Grau": "fonte_liberacao_grau",           // col M — conflito de nome com col J
-  "Grupo e Classe de Temperatura": "grupo_classe_temp_raw",
-  "Zona 0": "zona_0",
-  "Zona 1(m)": "zona_1_m",
-  "Zona 2(m)": "zona_2_m",
-  "Zona 2 adicional(m)": "zona_2_adicional",
-  "Zona 20": "zona_20",
-  "Zona 21(m)": "zona_21_m",
-  "Zona 22(m)": "zona_22_m",
-};
+const VALID_ZONES = new Set(["0", "1", "2", "2a", "20", "21", "22"]);
+const VALID_GRAUS_LIBERACAO = new Set([
+  "continua",
+  "contínua",
+  "continuo",
+  "contínuo",
+  "primaria",
+  "primária",
+  "primario",
+  "primário",
+  "secundaria",
+  "secundária",
+  "secundario",
+  "secundário",
+]);
 
-/**
- * Mapeamento posicional (index 0-based) → chave Python.
- * Usado para resolver conflitos de nomes duplicados entre colunas.
- *
- *   Col B (index 1) = "descricao" (equipamento)
- *   Col J (index 9) = "ventilacao_grau"
- *   Col L (index 11) = "fonte_liberacao_descricao"
- *   Col M (index 12) = "fonte_liberacao_grau"
- */
-export const AREA_COLUMN_INDEX_TO_KEY: Record<number, string> = {
-  0: "identificacao",
-  1: "descricao",
-  2: "locacao",
-  3: "substancia",
-  // 4: merged — ignorar
-  5: "temperatura_celsius",
-  6: "pressao_kpa",
-  7: "volume_m3",
-  8: "ventilacao_tipo",
-  9: "ventilacao_grau",
-  10: "ventilacao_disponibilidade",
-  11: "fonte_liberacao_descricao",
-  12: "fonte_liberacao_grau",
-  13: "grupo_classe_temp_raw",
-  14: "zona_0",
-  15: "zona_1_m",
-  16: "zona_2_m",
-  17: "zona_2_adicional",
-  18: "zona_20",
-  19: "zona_21_m",
-  20: "zona_22_m",
-};
+function normalizeCell(value: string | null | undefined): string {
+  return (value ?? "").toString().trim();
+}
 
-/** Nomes das colunas obrigatórias (lowercase + trimmed) */
-export const AREA_REQUIRED_COLUMN_NAMES = AREA_COLUMNS
-  .filter((c) => c.required && !c.merged)
-  .map((c) => c.name.toLowerCase().trim());
+function normalizeKey(value: string | null | undefined): string {
+  return normalizeCell(value).toLowerCase();
+}
 
-/** Número de colunas de dados (excluindo merged col E) */
-export const AREA_DATA_COLUMN_COUNT = 20;
+function isEmptyRow(row: string[]): boolean {
+  return row.every((cell) => normalizeCell(cell) === "");
+}
 
-/** Número total de colunas na planilha (A-U = 21) */
-export const AREA_TOTAL_COLUMNS = 21;
-
-/** Linha onde começam os dados (1-based) */
-export const AREA_DATA_START_ROW = 6;
-
-/** Número máximo de linhas de dados (segurança) */
-export const AREA_MAX_ROWS = 2_000;
-
-// ─── Validação Básica ─────────────────────────────────────
-
-/**
- * Valida uma linha de dados contra o contrato de colunas.
- * Usado pelo frontend para validação rápida antes do envio ao backend.
- *
- * @param row Objeto com valores indexados por chave Python (via AREA_COLUMN_INDEX_TO_KEY)
- * @param rowNumber Número da linha na planilha (para mensagens de erro)
- */
-export function validateAreaRow(
-  row: Record<string, string>,
+function validateZone(
+  value: string,
   rowNumber: number,
-): AreaRowValidationError[] {
-  const errors: AreaRowValidationError[] = [];
+  errors: AreaRowValidationError[],
+) {
+  if (!VALID_ZONES.has(value)) {
+    errors.push({
+      row: rowNumber,
+      column: "zona",
+      message: `Zona inválida "${value}". Use: 0, 1, 2, 2a, 20, 21 ou 22.`,
+    });
+  }
+}
 
-  for (const col of AREA_COLUMNS) {
-    if (col.merged) continue;
+function validateLiberationDegree(
+  value: string,
+  rowNumber: number,
+  errors: AreaRowValidationError[],
+) {
+  if (!VALID_GRAUS_LIBERACAO.has(value.toLowerCase())) {
+    errors.push({
+      row: rowNumber,
+      column: "grau_liberacao",
+      message:
+        `Grau de liberação inválido "${value}". Use Contínua, Primária ou Secundária.`,
+    });
+  }
+}
 
-    const key = AREA_COLUMN_INDEX_TO_KEY[col.index];
-    if (!key) continue;
+// =====================================================================
+// Detector de formato + parsers
+// =====================================================================
 
-    const value = (row[key] ?? "").trim();
+type AreaSpreadsheetFormat = "official" | "flat";
 
-    // Verificação de obrigatório
-    if (col.required && !value) {
-      errors.push({
-        row: rowNumber,
-        column: col.label ?? col.name,
-        message: `Campo obrigatório "${col.label ?? col.name}" está vazio`,
-      });
-      continue;
-    }
+/** Remove acentos e colapsa espaços/quebras de linha para comparação. */
+function normalizeForMatch(value: string | null | undefined): string {
+  return normalizeCell(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-    // Verificação de enum (caso-insensitivo)
-    if (col.type === "enum" && value && col.enumValues) {
-      const normalized = value.toLowerCase().trim();
-      if (!col.enumValues.includes(normalized)) {
-        errors.push({
-          row: rowNumber,
-          column: col.label ?? col.name,
-          message: `Valor "${value}" inválido para "${col.label ?? col.name}". Valores aceitos: ${col.enumValues.join(", ")}`,
-        });
+/** Retorna o índice da linha que contém "Identificação" + "Locação" (header oficial). */
+function findOfficialHeaderRow(rawRows: string[][]): number {
+  const limit = Math.min(rawRows.length, 10);
+  for (let i = 0; i < limit; i += 1) {
+    const cells = (rawRows[i] ?? []).map((c) => normalizeForMatch(c));
+    const hasIdentificacao = cells.some((c) => c === "identificacao");
+    const hasLocacao = cells.some((c) => c === "locacao");
+    if (hasIdentificacao && hasLocacao) return i;
+  }
+  return -1;
+}
+
+/** Detecta se as primeiras linhas batem com o formato flat (snake_case). */
+function isFlatFormat(rawRows: string[][]): boolean {
+  const header = rawRows[0]?.map((v) => normalizeKey(v)) ?? [];
+  return header.some((h) => AREA_HEADER_INDEX.has(h));
+}
+
+function detectFormat(rawRows: string[][]): AreaSpreadsheetFormat | null {
+  if (findOfficialHeaderRow(rawRows) >= 0) return "official";
+  if (isFlatFormat(rawRows)) return "flat";
+  return null;
+}
+
+/**
+ * Extrai metadados pré-header como "Projeto:", "Cliente:", "Tipo de Unidade:",
+ * "Data:" e "Revisão:". Procura padrão `<label>:` em uma célula e captura a
+ * próxima célula não-vazia da mesma linha.
+ */
+function extractAreaPreHeaderMetadata(
+  rawRows: string[][],
+  headerRowIndex: number,
+): Record<string, string> {
+  const metadata: Record<string, string> = {};
+  const limit = Math.max(0, headerRowIndex);
+
+  const labelMap: Array<{ aliases: string[]; key: string }> = [
+    { aliases: ["projeto", "obra", "empreendimento"], key: "projeto" },
+    { aliases: ["cliente", "razão social", "razao social"], key: "cliente" },
+    {
+      aliases: [
+        "tipo de unidade",
+        "unidade",
+        "área / unidade",
+        "area / unidade",
+        "planta",
+      ],
+      key: "tipo_unidade",
+    },
+    { aliases: ["data", "data da avaliação", "data da avaliacao"], key: "data" },
+    { aliases: ["revisão", "revisao", "rev"], key: "revisao" },
+    { aliases: ["art", "art nº", "art no"], key: "art" },
+    { aliases: ["contrato"], key: "contrato" },
+    { aliases: ["local vistoriado", "local"], key: "local_vistoriado" },
+  ];
+
+  for (let i = 0; i < limit; i += 1) {
+    const row = rawRows[i] ?? [];
+    for (let j = 0; j < row.length - 1; j += 1) {
+      const rawCell = normalizeCell(row[j]).replace(/[:º°]+\s*$/u, "").trim();
+      if (!rawCell) continue;
+      const cell = normalizeForMatch(rawCell);
+
+      // Tenta identificar o próximo valor não-vazio na mesma linha.
+      let next = "";
+      for (let k = j + 1; k < row.length; k += 1) {
+        const v = normalizeCell(row[k]);
+        if (v) {
+          next = v;
+          break;
+        }
       }
-    }
+      if (!next) continue;
 
-    // Verificação de número
-    if (col.type === "number" && value) {
-      const num = parseFloat(value.replace(",", "."));
-      if (isNaN(num)) {
-        errors.push({
-          row: rowNumber,
-          column: col.label ?? col.name,
-          message: `Valor "${value}" não é um número válido para "${col.label ?? col.name}"`,
-        });
+      for (const entry of labelMap) {
+        if (entry.aliases.some((alias) => cell === normalizeForMatch(alias))) {
+          if (!metadata[entry.key]) {
+            metadata[entry.key] = next;
+          }
+        }
       }
     }
   }
 
-  return errors;
+  return metadata;
+}
+
+// ---- Parser do modelo OFICIAL ---------------------------------------
+
+/** Mapa posicional de colunas no template oficial (índices baseados na linha "Identificação"). */
+const OFFICIAL_COLUMN_INDEX = {
+  tag: 0,
+  descricao: 1,
+  area_local: 2,
+  substancia: 3,
+  temperatura: 5,
+  pressao: 6,
+  volume: 7,
+  ventilacao_tipo: 8,
+  grau_ventilacao: 9,
+  disponibilidade_ventilacao: 10,
+  fonte_liberacao: 11,
+  grau_liberacao: 12,
+  grupo_classe: 13,
+  zona0: 14,
+  zona1: 15,
+  zona2: 16,
+  zona2_adicional: 17,
+  zona20: 18,
+  zona21: 19,
+  zona22: 20,
+} as const;
+
+/** Pares (zona, índice da coluna de extensão) na ordem de aparição na planilha. */
+const ZONE_EXTENSION_COLUMNS: { zona: string; index: number; label: string }[] = [
+  { zona: "0", index: OFFICIAL_COLUMN_INDEX.zona0, label: "Zona 0" },
+  { zona: "1", index: OFFICIAL_COLUMN_INDEX.zona1, label: "Zona 1" },
+  { zona: "2", index: OFFICIAL_COLUMN_INDEX.zona2, label: "Zona 2" },
+  { zona: "2a", index: OFFICIAL_COLUMN_INDEX.zona2_adicional, label: "Zona 2 (adicional)" },
+  { zona: "20", index: OFFICIAL_COLUMN_INDEX.zona20, label: "Zona 20" },
+  { zona: "21", index: OFFICIAL_COLUMN_INDEX.zona21, label: "Zona 21" },
+  { zona: "22", index: OFFICIAL_COLUMN_INDEX.zona22, label: "Zona 22" },
+];
+
+/** Considera "vazio" valores como "", "NA", "N/A", "-". */
+function isEmptyExtension(value: string): boolean {
+  const v = value.trim().toUpperCase();
+  return v === "" || v === "NA" || v === "N/A" || v === "-" || v === "—";
+}
+
+/** Faz o parse de "T200 (III B)" → { classe: "T200", grupo: "III B" }. */
+function parseGrupoClasse(raw: string): { classe: string; grupo: string } {
+  const match = raw.match(/^\s*([^()]+?)\s*\(([^)]+)\)\s*$/);
+  if (match) {
+    return { classe: match[1].trim(), grupo: match[2].trim() };
+  }
+  return { classe: raw.trim(), grupo: "" };
+}
+
+function buildOfficialObservations(parts: {
+  temperatura: string;
+  pressao: string;
+  volume: string;
+}): string {
+  const segments: string[] = [];
+  if (parts.temperatura) segments.push(`Temp.: ${parts.temperatura} °C`);
+  if (parts.pressao) segments.push(`Pressão: ${parts.pressao} kPa`);
+  if (parts.volume) segments.push(`Volume: ${parts.volume} m³`);
+  return segments.join(" | ");
+}
+
+function validateOfficialSpreadsheet(
+  rawRows: string[][],
+  headerRowIndex: number,
+): AreaSpreadsheetValidationResult {
+  const errors: AreaRowValidationError[] = [];
+  const warnings: AreaRowValidationError[] = [];
+  const metadata: Record<string, string> = {
+    modelo: "areas_v2_oficial",
+    template: "Tabela_de_classificacao_Rev_Final",
+    header_row: String(headerRowIndex + 1),
+    ...extractAreaPreHeaderMetadata(rawRows, headerRowIndex),
+  };
+  const normalizedRows: Record<string, string>[] = [];
+
+  for (let index = headerRowIndex + 1; index < rawRows.length; index += 1) {
+    const rawRow = rawRows[index] ?? [];
+    if (isEmptyRow(rawRow)) continue;
+
+    const rowNumber = index + 1;
+    const get = (i: number) => normalizeCell(rawRow[i]);
+
+    const tag = get(OFFICIAL_COLUMN_INDEX.tag);
+    const descricao = get(OFFICIAL_COLUMN_INDEX.descricao);
+    const areaLocal = get(OFFICIAL_COLUMN_INDEX.area_local);
+    const substancia = get(OFFICIAL_COLUMN_INDEX.substancia);
+    const fonteLiberacao = get(OFFICIAL_COLUMN_INDEX.fonte_liberacao);
+    const grauLiberacao = get(OFFICIAL_COLUMN_INDEX.grau_liberacao);
+    const ventilacaoTipo = get(OFFICIAL_COLUMN_INDEX.ventilacao_tipo);
+    const grauVentilacao = get(OFFICIAL_COLUMN_INDEX.grau_ventilacao);
+    const disponibilidade = get(OFFICIAL_COLUMN_INDEX.disponibilidade_ventilacao);
+    const grupoClasseRaw = get(OFFICIAL_COLUMN_INDEX.grupo_classe);
+    const temperaturaProcesso = get(OFFICIAL_COLUMN_INDEX.temperatura);
+    const pressaoProcesso = get(OFFICIAL_COLUMN_INDEX.pressao);
+    const volumeProcesso = get(OFFICIAL_COLUMN_INDEX.volume);
+    const observacoes = buildOfficialObservations({
+      temperatura: temperaturaProcesso,
+      pressao: pressaoProcesso,
+      volume: volumeProcesso,
+    });
+
+    // Linha de dados deve ter ao menos área_local OU fonte_liberacao para ser considerada
+    if (!areaLocal && !fonteLiberacao && !substancia) continue;
+
+    const requiredChecks: { value: string; key: string; label: string }[] = [
+      { value: areaLocal, key: "area_local", label: "Locação / Área" },
+      { value: substancia, key: "substancia", label: "Substância" },
+      { value: fonteLiberacao, key: "fonte_liberacao", label: "Fonte de Liberação" },
+      { value: grauLiberacao, key: "grau_liberacao", label: "Grau de Liberação" },
+      { value: ventilacaoTipo, key: "ventilacao_tipo", label: "Tipo de Ventilação" },
+      { value: grauVentilacao, key: "grau_ventilacao", label: "Grau de Ventilação" },
+      { value: disponibilidade, key: "disponibilidade_ventilacao", label: "Disponibilidade da Ventilação" },
+    ];
+
+    for (const check of requiredChecks) {
+      if (!check.value) {
+        errors.push({
+          row: rowNumber,
+          column: check.key,
+          message: `Campo obrigatório "${check.label}" está vazio.`,
+        });
+      }
+    }
+
+    if (grauLiberacao) validateLiberationDegree(grauLiberacao, rowNumber, errors);
+
+    const { classe, grupo } = parseGrupoClasse(grupoClasseRaw);
+
+    // Explode em uma linha por zona ativa
+    const zonesPresent = ZONE_EXTENSION_COLUMNS.filter((zc) => !isEmptyExtension(get(zc.index)));
+
+    if (zonesPresent.length === 0) {
+      warnings.push({
+        row: rowNumber,
+        column: "zona",
+        message: "Nenhuma zona classificada (todas as colunas Zona 0-22 estão vazias ou \"NA\").",
+      });
+      continue;
+    }
+
+    for (const zc of zonesPresent) {
+      const extensaoRaw = get(zc.index)
+        .replace(/\r?\n/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      validateZone(zc.zona, rowNumber, errors);
+
+      normalizedRows.push({
+        area_local: areaLocal,
+        area_descricao: descricao,
+        tag_referencia: tag,
+        substancia,
+        fonte_liberacao: fonteLiberacao,
+        grau_liberacao: grauLiberacao,
+        ventilacao_tipo: ventilacaoTipo,
+        grau_ventilacao: grauVentilacao,
+        disponibilidade_ventilacao: disponibilidade,
+        zona: zc.zona,
+        extensao: extensaoRaw,
+        grupo,
+        classe_temperatura: classe,
+        epl: "",
+        temperatura_processo: temperaturaProcesso,
+        pressao_processo: pressaoProcesso,
+        volume_processo: volumeProcesso,
+        observacoes: observacoes
+          ? `${observacoes} | ${zc.label}`
+          : zc.label,
+      });
+    }
+  }
+
+  if (normalizedRows.length === 0 && errors.length === 0) {
+    errors.push({
+      row: headerRowIndex + 2,
+      column: "*",
+      message: "Nenhuma linha de dados válida foi encontrada após o cabeçalho.",
+    });
+  }
+
+  metadata.total_fontes = String(normalizedRows.length);
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    rows: normalizedRows,
+    rowCount: normalizedRows.length,
+    metadata,
+  };
+}
+
+// ---- Parser FLAT (legado) -------------------------------------------
+
+function validateFlatSpreadsheet(
+  rawRows: string[][],
+): AreaSpreadsheetValidationResult {
+  const errors: AreaRowValidationError[] = [];
+  const warnings: AreaRowValidationError[] = [];
+  const metadata: Record<string, string> = { modelo: "areas_v2_flat" };
+
+  const header = rawRows[0]?.map((value) => normalizeKey(value)) ?? [];
+  const columnIndexByKey = new Map<string, number>();
+
+  header.forEach((headerName, index) => {
+    const column = AREA_HEADER_INDEX.get(headerName);
+    if (column) {
+      columnIndexByKey.set(column.key, index);
+    }
+  });
+
+  for (const column of AREA_COLUMNS) {
+    if (column.required && !columnIndexByKey.has(column.key)) {
+      errors.push({
+        row: 1,
+        column: column.name,
+        message: `Coluna obrigatória ausente: ${column.name}`,
+      });
+    }
+  }
+
+  if (errors.length > 0) {
+    return {
+      valid: false,
+      errors,
+      warnings,
+      rows: [],
+      rowCount: 0,
+      metadata,
+    };
+  }
+
+  const normalizedRows: Record<string, string>[] = [];
+
+  for (let index = 1; index < rawRows.length; index += 1) {
+    const rowNumber = index + 1;
+    const rawRow = rawRows[index] ?? [];
+
+    if (isEmptyRow(rawRow)) {
+      continue;
+    }
+
+    const row: Record<string, string> = {};
+
+    for (const column of AREA_COLUMNS) {
+      const columnIndex = columnIndexByKey.get(column.key);
+      row[column.key] = columnIndex === undefined
+        ? ""
+        : normalizeCell(rawRow[columnIndex]);
+    }
+
+    for (const column of AREA_COLUMNS) {
+      if (column.required && !row[column.key]) {
+        errors.push({
+          row: rowNumber,
+          column: column.key,
+          message: `Campo obrigatório "${column.label}" está vazio.`,
+        });
+      }
+    }
+
+    if (row.zona) {
+      validateZone(row.zona, rowNumber, errors);
+    }
+
+    if (row.grau_liberacao) {
+      validateLiberationDegree(row.grau_liberacao, rowNumber, errors);
+    }
+
+    normalizedRows.push(row);
+  }
+
+  if (normalizedRows.length === 0) {
+    errors.push({
+      row: 2,
+      column: "*",
+      message: "Nenhuma linha de dados válida foi encontrada.",
+    });
+  }
+
+  metadata.modelo = "areas_v2";
+  metadata.total_fontes = String(normalizedRows.length);
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    rows: normalizedRows,
+    rowCount: normalizedRows.length,
+    metadata,
+  };
+}
+
+// =====================================================================
+// Dispatcher público
+// =====================================================================
+
+/**
+ * Valida uma planilha de Classificação de Áreas em qualquer um dos formatos
+ * suportados (modelo oficial com cabeçalho hierárquico ou flat snake_case).
+ *
+ * O modelo oficial é detectado pela presença das células "Identificação" e
+ * "Locação" nas primeiras 10 linhas. Caso nenhum formato seja reconhecido,
+ * a validação falha com erro descritivo apontando o cabeçalho esperado.
+ */
+export function validateAreaSpreadsheet(
+  rawRows: string[][],
+): AreaSpreadsheetValidationResult {
+  if (rawRows.length < 2) {
+    return {
+      valid: false,
+      errors: [
+        {
+          row: 1,
+          column: "*",
+          message: "A planilha deve conter cabeçalho e ao menos uma linha de dados.",
+        },
+      ],
+      warnings: [],
+      rows: [],
+      rowCount: 0,
+      metadata: {},
+    };
+  }
+
+  const format = detectFormat(rawRows);
+
+  if (format === "official") {
+    const headerRow = findOfficialHeaderRow(rawRows);
+    return validateOfficialSpreadsheet(rawRows, headerRow);
+  }
+
+  if (format === "flat") {
+    return validateFlatSpreadsheet(rawRows);
+  }
+
+  return {
+    valid: false,
+    errors: [
+      {
+        row: 1,
+        column: "*",
+        message:
+          "Formato de planilha não reconhecido. Use o template oficial " +
+          "(\"Tabela de Classificação Rev Final\") com cabeçalhos " +
+          "Identificação/Locação, ou um cabeçalho flat com nomes em snake_case " +
+          "(area_local, substancia, fonte_liberacao, …).",
+      },
+    ],
+    warnings: [],
+    rows: [],
+    rowCount: 0,
+    metadata: {},
+  };
 }

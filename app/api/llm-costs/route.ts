@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
       SELECT
         l.job_id,
         j.filename,
-        j.profile,
+        COALESCE(j.document_type::text, CASE WHEN j.profile = 'dust' THEN 'dha' ELSE j.profile END) AS profile,
         j.status,
         j.created_at AS job_created_at,
         COUNT(*)::int                      AS calls,
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
       FROM llm_usage_logs l
       JOIN jobs j ON j.id = l.job_id
       WHERE l.created_at >= ${sinceDate}
-      GROUP BY l.job_id, j.filename, j.profile, j.status, j.created_at
+      GROUP BY l.job_id, j.filename, j.document_type, j.profile, j.status, j.created_at
       ORDER BY cost_usd DESC
       LIMIT 100
     `.catch(() => [] as AnyRecord[]);

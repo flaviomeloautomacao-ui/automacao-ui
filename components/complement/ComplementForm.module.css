@@ -316,7 +316,8 @@
   margin-bottom: var(--space-4);
 }
 
-.dropzone:hover {
+.dropzone:hover,
+.dragActive {
   border-color: var(--accent);
   background: var(--bg-tertiary);
 }
@@ -547,7 +548,8 @@
   background: transparent;
 }
 
-.uploadBtn:hover {
+.uploadBtn:hover,
+.uploadBtnActive {
   border-color: var(--accent);
   color: var(--accent);
 }

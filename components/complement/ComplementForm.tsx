@@ -8,12 +8,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardBody, CardFooter } from "@/components/ui/Card";
+import { DropZone } from "@/components/ui/DropZone";
 import type { ApiResponse } from "@/lib/types";
 import {
   matchImagesToEquipments,
-  generateImageName,
-  getNextImageIndex,
-  toPascalCase,
   type ImageMatchResult,
 } from "@/lib/normalizeEquipmentName";
 
@@ -331,7 +329,6 @@ export function ComplementForm({
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getValues, jobId, artNumero, codigoDocumento, revisions]);
 
   const saveEquipment = useCallback(
@@ -544,9 +541,12 @@ export function ComplementForm({
   }
 
   // ── Batch image upload (step 1) ─────────────────────────
-  function handleBatchFilesSelected(fileList: FileList) {
+  function handleBatchFilesSelected(files: File[]) {
+    if (files.length === 0) {
+      setBatchResults([]);
+      return;
+    }
     const contrato = getValues("report.contrato") || "";
-    const files = Array.from(fileList);
     const eqs = eqFields.map((eq, idx) => ({
       id: getValues(`equipments.${idx}.id`) ?? eq.id,
       equipmentName: eq.equipmentName,
@@ -755,8 +755,15 @@ export function ComplementForm({
                       </button>
                     </div>
                   ) : (
-                    <label
+                    <DropZone
                       className={`${css.dropzone} ${css.coverDropzone} ${uploadingCover ? css.uploading : ""}`}
+                      activeClassName={css.dragActive}
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={uploadingCover}
+                      onFiles={(files) => {
+                        const file = files[0];
+                        if (file) handleCoverUpload(file);
+                      }}
                     >
                       <span className={css.dropzoneIcon}>🖼️</span>
                       <span className={css.dropzoneText}>
@@ -767,20 +774,7 @@ export function ComplementForm({
                       <span className={css.dropzoneHint}>
                         JPEG, PNG, WebP — máx. 10MB
                       </span>
-                      <input
-                        type="file"
-                        hidden
-                        accept="image/jpeg,image/png,image/webp"
-                        disabled={uploadingCover}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleCoverUpload(file);
-                            e.target.value = "";
-                          }
-                        }}
-                      />
-                    </label>
+                    </DropZone>
                   )}
                 </div>
 
@@ -795,6 +789,17 @@ export function ComplementForm({
                     />
                   </Field>
 
+                  <Field label="Número da ART">
+                    <input
+                      className={css.input}
+                      placeholder="Ex: 1234567890"
+                      value={artNumero}
+                      onChange={(e) => setArtNumero(e.target.value)}
+                    />
+                  </Field>
+
+
+
                   {/* Campo ART oculto por enquanto
                   <Field label="Número da ART">
                     <input
@@ -805,6 +810,90 @@ export function ComplementForm({
                     />
                   </Field>
                   */}
+                </div>
+
+                <div className={css.revisionSection}>
+                  <div className={css.revisionHeader}>
+                    <span className={css.label}>Controle de Revisão</span>
+                    <Button
+                      variant="secondary"
+                      onClick={addRevision}
+                      type="button"
+                    >
+                      + Adicionar Revisão
+                    </Button>
+                  </div>
+                  <div className={css.revisionTableWrap}>
+                    <table className={css.revisionTable}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: "10%" }}>Versão</th>
+                          <th style={{ width: "18%" }}>Data</th>
+                          <th style={{ width: "30%" }}>Responsável</th>
+                          <th style={{ width: "35%" }}>Descrição</th>
+                          <th style={{ width: "7%" }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {revisions.map((rev, idx) => (
+                          <tr key={idx}>
+                            <td>
+                              <input
+                                className={css.inputSmall}
+                                value={rev.version}
+                                onChange={(e) =>
+                                  updateRevision(idx, "version", e.target.value)
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                className={css.inputSmall}
+                                value={rev.date}
+                                onChange={(e) =>
+                                  updateRevision(idx, "date", e.target.value)
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                className={css.inputSmall}
+                                value={rev.author}
+                                onChange={(e) =>
+                                  updateRevision(idx, "author", e.target.value)
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                className={css.inputSmall}
+                                value={rev.description}
+                                onChange={(e) =>
+                                  updateRevision(
+                                    idx,
+                                    "description",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>
+                              {revisions.length > 1 && (
+                                <button
+                                  type="button"
+                                  className={css.revisionRemoveBtn}
+                                  onClick={() => removeRevision(idx)}
+                                  title="Remover revisão"
+                                >
+                                  ✖
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* ─── Tabela de Revisões (Feature 2) — oculta por enquanto, revisão será preenchida após gerar PDF
@@ -881,7 +970,7 @@ export function ComplementForm({
                                   onClick={() => removeRevision(idx)}
                                   title="Remover revisão"
                                 >
-                                  ✕
+                                  ✖
                                 </button>
                               )}
                             </td>
@@ -925,7 +1014,13 @@ export function ComplementForm({
                 </p>
 
                 {/* Dropzone */}
-                <label className={css.dropzone}>
+                <DropZone
+                  className={css.dropzone}
+                  activeClassName={css.dragActive}
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  multiple
+                  onFiles={handleBatchFilesSelected}
+                >
                   <span className={css.dropzoneIcon}>📁</span>
                   <span className={css.dropzoneText}>
                     Clique ou arraste imagens para vincular
@@ -933,19 +1028,7 @@ export function ComplementForm({
                   <span className={css.dropzoneHint}>
                     JPEG, PNG, WebP — máx. 10MB cada
                   </span>
-                  <input
-                    type="file"
-                    hidden
-                    multiple
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files.length > 0) {
-                        handleBatchFilesSelected(e.target.files);
-                        e.target.value = "";
-                      }
-                    }}
-                  />
-                </label>
+                </DropZone>
 
                 {/* Match results */}
                 {batchResults.length > 0 && (
@@ -1081,7 +1164,24 @@ export function ComplementForm({
                       )}
                     </div>
 
-                    {/* Seção 12: apenas observações extras + imagem */}
+                    <Field label="Local de Instalação">
+                      <input
+                        className={css.input}
+                        type="text"
+                        placeholder="Ex: Moega rodoviária, sala de filtros..."
+                        {...register(`equipments.${idx}.localInstalacao`)}
+                      />
+                    </Field>
+
+                    <Field label="Função Operacional">
+                      <textarea
+                        className={css.textarea}
+                        rows={3}
+                        placeholder="Ex: Transporte de produto, captação de pó, moagem..."
+                        {...register(`equipments.${idx}.funcaoOperacional`)}
+                      />
+                    </Field>
+
                     <Field label="Observações extras (contexto para IA)">
                       <p className={css.fieldHint}>
                         Observações específicas deste equipamento para a
@@ -1116,24 +1216,18 @@ export function ComplementForm({
                           </div>
                         ))}
 
-                        <label
+                        <DropZone
                           className={`${css.uploadBtn} ${isUploading ? css.uploading : ""}`}
+                          activeClassName={css.uploadBtnActive}
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          disabled={isUploading}
+                          onFiles={(files) => {
+                            const file = files[0];
+                            if (file) handleImageUpload(dbId, file);
+                          }}
                         >
                           {isUploading ? "…" : "+"}
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp,image/gif"
-                            hidden
-                            disabled={isUploading}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleImageUpload(dbId, file);
-                                e.target.value = "";
-                              }
-                            }}
-                          />
-                        </label>
+                        </DropZone>
                       </div>
                     </div>
                   </div>
@@ -1381,26 +1475,43 @@ export function ComplementForm({
                             )}
                           </span>
                         </div>
-                        {(v?.observacoesExtras?.trim() || imgs.length > 0) && (
-                          <div className={css.reviewGrid}>
-                            {v?.observacoesExtras?.trim() && (
-                              <ReviewRow
-                                label="Observações"
-                                value={v.observacoesExtras}
-                              />
-                            )}
-                            {imgs.length > 0 && (
-                              <>
-                                <span className={css.reviewLabel}>
-                                  Imagens
-                                </span>
-                                <span className={css.reviewValue}>
-                                  {imgs.length} imagem(ns)
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        )}
+                        {(
+                          v?.localInstalacao?.trim() ||
+                          v?.funcaoOperacional?.trim() ||
+                          v?.observacoesExtras?.trim() ||
+                          imgs.length > 0
+                        ) && (
+                            <div className={css.reviewGrid}>
+                              {v?.localInstalacao?.trim() && (
+                                <ReviewRow
+                                  label="Local de Instalação"
+                                  value={v.localInstalacao}
+                                />
+                              )}
+                              {v?.funcaoOperacional?.trim() && (
+                                <ReviewRow
+                                  label="Função Operacional"
+                                  value={v.funcaoOperacional}
+                                />
+                              )}
+                              {v?.observacoesExtras?.trim() && (
+                                <ReviewRow
+                                  label="Observações"
+                                  value={v.observacoesExtras}
+                                />
+                              )}
+                              {imgs.length > 0 && (
+                                <>
+                                  <span className={css.reviewLabel}>
+                                    Imagens
+                                  </span>
+                                  <span className={css.reviewValue}>
+                                    {imgs.length} imagem(ns)
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )}
                       </div>
                     );
                   })}

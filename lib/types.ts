@@ -8,6 +8,7 @@
 
 import type { JobModel } from "@/lib/generated/prisma/models/Job";
 import type { JobStepModel } from "@/lib/generated/prisma/models/JobStep";
+import type { DocumentType } from "@/lib/documents";
 
 // ─── Re‑export do modelo Prisma como DTO ──────────────────
 export type Job = JobModel;
@@ -41,7 +42,7 @@ export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 // ─── Payloads de entrada ──────────────────────────────────
 export interface CreateJobPayload {
   file: File;
-  profile: string;
+  documentType: DocumentType;
 }
 
 export interface UpdateJobPayload {

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { JobsTable } from "@/components/jobs/JobsTable";
 import type { ApiResponse, Job } from "@/lib/types";
+import styles from "./JobsTable.module.css";
 
 /** Intervalo de auto-refresh em ms */
 const REFRESH_INTERVAL_MS = 3_000;
@@ -12,28 +13,44 @@ const MAX_REFRESH_CYCLES = 600; // ~30 min
 
 const ACTIVE_STATUSES = new Set(["queued", "processing", "awaiting_complement"]);
 
+type FetchJobsResult =
+  | { jobs: Job[]; error: null }
+  | { jobs: null; error: string };
+
 function hasActiveJobs(jobs: Job[]): boolean {
   return jobs.some((j) => ACTIVE_STATUSES.has(j.status));
 }
 
-async function fetchJobs(): Promise<Job[] | null> {
+async function fetchJobs(): Promise<FetchJobsResult> {
   try {
     const res = await fetch("/api/jobs?limit=50");
-    if (!res.ok) return null;
-    const json: ApiResponse<Job[]> = await res.json();
-    return json.error ? null : json.data;
+    const json = (await res.json().catch(() => null)) as ApiResponse<Job[]> | null;
+
+    if (!res.ok || !json || json.error) {
+      return {
+        jobs: null,
+        error: json?.error?.message ?? "Nao foi possivel atualizar o historico de jobs agora.",
+      };
+    }
+
+    return { jobs: json.data, error: null };
   } catch {
-    return null;
+    return {
+      jobs: null,
+      error: "Nao foi possivel atualizar o historico de jobs agora.",
+    };
   }
 }
 
 interface JobsTableLiveProps {
   initialJobs: Job[];
+  initialError?: string | null;
 }
 
-export function JobsTableLive({ initialJobs }: JobsTableLiveProps) {
+export function JobsTableLive({ initialJobs, initialError = null }: JobsTableLiveProps) {
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [refreshing, setRefreshing] = useState(hasActiveJobs(initialJobs));
+  const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
   const cycleCount = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -46,8 +63,7 @@ export function JobsTableLive({ initialJobs }: JobsTableLiveProps) {
   }, []);
 
   useEffect(() => {
-    if (!hasActiveJobs(jobs)) {
-      stopRefresh();
+    if (!refreshing || !hasActiveJobs(jobs)) {
       return;
     }
 
@@ -59,12 +75,16 @@ export function JobsTableLive({ initialJobs }: JobsTableLiveProps) {
         return;
       }
 
-      const updated = await fetchJobs();
-      if (!updated) return;
+      const result = await fetchJobs();
+      if (result.jobs === null) {
+        setErrorMessage(result.error);
+        return;
+      }
 
-      setJobs(updated);
+      setJobs(result.jobs);
+      setErrorMessage(null);
 
-      if (!hasActiveJobs(updated)) {
+      if (!hasActiveJobs(result.jobs)) {
         stopRefresh();
       }
     }, REFRESH_INTERVAL_MS);
@@ -75,10 +95,16 @@ export function JobsTableLive({ initialJobs }: JobsTableLiveProps) {
         intervalRef.current = null;
       }
     };
-  }, [jobs, stopRefresh]);
+  }, [jobs, refreshing, stopRefresh]);
 
   return (
     <div>
+      {errorMessage && (
+        <div className={styles.notice} role="status">
+          <strong>Banco de dados indisponivel.</strong>
+          <span>{errorMessage}</span>
+        </div>
+      )}
       {refreshing && (
         <p
           style={{

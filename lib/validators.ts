@@ -12,9 +12,9 @@ export const createJobSchema = z.object({
   filename: z
     .string({ error: "filename is required" })
     .min(1, "filename must not be empty"),
-  profile: z
-    .string({ error: "profile is required" })
-    .min(1, "profile must not be empty"),
+  documentType: z.enum(["dha", "areas"], {
+    error: "documentType is required",
+  }),
 });
 
 export type CreateJobInput = z.infer<typeof createJobSchema>;

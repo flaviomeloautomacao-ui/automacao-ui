@@ -7,28 +7,28 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardFooter } from "@/components/ui/Card";
 import type { ApiResponse, CreateJobResponse } from "@/lib/types";
 import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS } from "@/lib/constants";
+import type { DocumentType } from "@/lib/documents";
 import css from "./UploadForm.module.css";
 
-const PROFILES = [
+const DOCUMENT_OPTIONS = [
   {
-    value: "dust",
+    value: "dha",
     label: "DHA",
     desc: "Dust Hazard Analysis",
     icon: "",
     cssClass: "dust",
   },
   {
-    value: "gas",
-    label: "Classificação de áreas",
-    desc: "Gás e Poeiras",
+    value: "areas",
+    label: "Classificação de Áreas",
+    desc: "IEC 60079-10-1 / 10-2",
     icon: "",
-    cssClass: "gas",
-    comingSoon: true,
+    cssClass: "areas",
   },
 ] as const;
 
 interface FieldErrors {
-  profile?: string;
+  documentType?: string;
   file?: string;
 }
 
@@ -41,7 +41,7 @@ export function UploadForm() {
   const [validationDetails, setValidationDetails] = useState<unknown[] | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedProfile, setSelectedProfile] = useState<string>("");
+  const [selectedDocumentType, setSelectedDocumentType] = useState<DocumentType | "">("");
   const [dragActive, setDragActive] = useState(false);
 
   const handleDrag = useCallback((e: DragEvent) => {
@@ -77,7 +77,7 @@ export function UploadForm() {
     setValidationDetails(null);
 
     const errors: FieldErrors = {};
-    if (!selectedProfile) errors.profile = "Selecione um perfil de risco.";
+    if (!selectedDocumentType) errors.documentType = "Selecione um tipo de documento.";
 
     if (!selectedFile || selectedFile.size === 0) {
       errors.file = "Selecione um arquivo .xlsx ou .csv.";
@@ -102,7 +102,7 @@ export function UploadForm() {
     try {
       const body = new FormData();
       body.append("file", selectedFile!);
-      body.append("profile", selectedProfile);
+      body.append("documentType", selectedDocumentType);
 
       const res = await fetch("/api/jobs", { method: "POST", body });
       const json: ApiResponse<CreateJobResponse> = await res.json();
@@ -136,23 +136,25 @@ export function UploadForm() {
         <CardBody>
           {/* Profile Selection */}
           <div className={css.profileSection}>
-            <span className={css.profileLabel}>Perfil de Risco</span>
+            <span className={css.profileLabel}>Tipo de Documento</span>
             <div className={css.profileCards}>
-              {PROFILES.map((p) => {
-                const isDisabled = loading || ("comingSoon" in p && !!p.comingSoon);
+              {DOCUMENT_OPTIONS.map((p) => {
+                const comingSoon =
+                  "comingSoon" in p && Boolean((p as { comingSoon?: boolean }).comingSoon);
+                const isDisabled = loading || comingSoon;
                 return (
                   <button
                     key={p.value}
                     type="button"
-                    className={`${css.profileCard} ${selectedProfile === p.value ? css.selected : ""} ${"comingSoon" in p && p.comingSoon ? css.comingSoon : ""}`}
+                    className={`${css.profileCard} ${selectedDocumentType === p.value ? css.selected : ""} ${comingSoon ? css.comingSoon : ""}`}
                     onClick={() => {
-                      if ("comingSoon" in p && p.comingSoon) return;
-                      setSelectedProfile(p.value);
-                      setFieldErrors((prev) => ({ ...prev, profile: undefined }));
+                      if (comingSoon) return;
+                      setSelectedDocumentType(p.value);
+                      setFieldErrors((prev) => ({ ...prev, documentType: undefined }));
                     }}
                     disabled={isDisabled}
                   >
-                    {"comingSoon" in p && p.comingSoon && (
+                    {comingSoon && (
                       <span className={css.comingSoonBadge}>Em breve</span>
                     )}
                     {/* <div className={`${css.profileIcon} ${css[p.cssClass]}`}>{p.icon}</div> */}
@@ -162,13 +164,12 @@ export function UploadForm() {
                 );
               })}
             </div>
-            {fieldErrors.profile && (
-              <span className={css.profileError}>{fieldErrors.profile}</span>
+            {fieldErrors.documentType && (
+              <span className={css.profileError}>{fieldErrors.documentType}</span>
             )}
           </div>
 
-          {/* Hidden profile input for form */}
-          <input type="hidden" name="profile" value={selectedProfile} />
+          <input type="hidden" name="documentType" value={selectedDocumentType} />
 
           {/* Dropzone */}
           <div

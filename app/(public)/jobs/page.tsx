@@ -2,16 +2,25 @@ import { prisma } from "@/lib/prisma";
 import { JobsTableLive } from "@/components/jobs/JobsTableLive";
 import Link from "next/link";
 import { Button } from "@/components/ui";
+import { getDatabaseErrorMessage } from "@/lib/databaseError";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Histórico — DHA Automação" };
 
 export default async function JobsPage() {
-  const jobs = await prisma.job.findMany({
-    take: 50,
-    orderBy: { createdAt: "desc" },
-  });
+  let jobs: Awaited<ReturnType<typeof prisma.job.findMany>> = [];
+  let databaseError: string | null = null;
+
+  try {
+    jobs = await prisma.job.findMany({
+      take: 50,
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    console.error("[JobsPage] Failed to fetch jobs", error);
+    databaseError = getDatabaseErrorMessage(error);
+  }
 
   const serializedJobs = JSON.parse(JSON.stringify(jobs));
 
@@ -39,7 +48,10 @@ export default async function JobsPage() {
           </Button>
         </Link>
       </div>
-      <JobsTableLive initialJobs={serializedJobs} />
+      <JobsTableLive
+        initialJobs={serializedJobs}
+        initialError={databaseError}
+      />
     </div>
   );
 }

@@ -3,7 +3,7 @@
  *
  * GET  → Lista jobs (limit/offset via query string)
  * POST → Recebe planilha via FormData, valida, persiste e cria Report vazio
- *        para complementação. NÃO dispara processamento.
+ *        para complementação. Não dispara processamento.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -11,12 +11,20 @@ import { prisma } from "@/lib/prisma";
 import { listJobsQuerySchema } from "@/lib/validators";
 import { parseSpreadsheet } from "@/lib/spreadsheetParser";
 import { validateSpreadsheet, normalizeRow } from "@/lib/spreadsheetContract";
+import { validateAreaSpreadsheet } from "@/lib/spreadsheetContractAreas";
 import { getArchiveExpirationDate, formatDatePath } from "@/lib/date";
+import { getDatabaseErrorMessage } from "@/lib/databaseError";
 import { getSupabaseAdmin, STORAGE_BUCKET, ensureStorageBucket } from "@/lib/supabaseServer";
 import { MAX_UPLOAD_MB, ALLOWED_EXTENSIONS, PIPELINE_STEPS } from "@/lib/constants";
+import {
+  DOCUMENT_SCHEMA_V2,
+  documentTypeToLegacyProfile,
+  getDocumentTypeLabel,
+  isDocumentType,
+  legacyProfileToDocumentType,
+  type DocumentType,
+} from "@/lib/documents";
 import type { ApiResponse } from "@/lib/types";
-
-// ─── Helpers ──────────────────────────────────────────────
 
 function success<T>(data: T, status = 200) {
   return NextResponse.json<ApiResponse<T>>(
@@ -37,12 +45,341 @@ function error(
   );
 }
 
-// ─── Constantes ───────────────────────────────────────────
-
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
-const BATCH_SIZE = 500; // linhas por createMany
+const BATCH_SIZE = 500;
 
-// ─── GET /api/jobs ────────────────────────────────────────
+interface UploadValidationResult {
+  valid: boolean;
+  errors: unknown[];
+  warnings: unknown[];
+  rows: Record<string, string>[];
+  rowCount: number;
+  metadata: Record<string, string>;
+}
+
+function resolveRequestedDocumentType(formData: FormData): DocumentType | null {
+  const explicitDocumentType = (formData.get("documentType") as string | null)?.trim();
+  if (isDocumentType(explicitDocumentType)) {
+    return explicitDocumentType;
+  }
+
+  const legacyProfile = (formData.get("profile") as string | null)?.trim();
+  return legacyProfileToDocumentType(legacyProfile);
+}
+
+function collectDhaEquipmentSeeds(rows: Record<string, string>[]) {
+  const equipmentGroups = new Map<
+    string,
+    { equipmentName: string; equipmentDescription: string | null }
+  >();
+
+  for (const row of rows) {
+    const equipmentName = (row["Equipamento"] ?? "").trim();
+    if (!equipmentName) continue;
+
+    if (!equipmentGroups.has(equipmentName)) {
+      equipmentGroups.set(equipmentName, {
+        equipmentName,
+        equipmentDescription: (row["Descrição do equipamento"] ?? "").trim() || null,
+      });
+    }
+  }
+
+  return Array.from(equipmentGroups.values());
+}
+
+function collectAreaSeeds(rows: Record<string, string>[]) {
+  const areas = new Map<
+    string,
+    {
+      areaName: string;
+      orderIndex: number;
+      description: string | null;
+      sources: Array<{
+        tagReferencia: string | null;
+        substanceName: string;
+        sourceName: string;
+        liberationDegree: string;
+        ventilationType: string;
+        ventilationDegree: string;
+        ventilationAvailability: string;
+        zone: string;
+        extension: string;
+        grupo: string | null;
+        classeTemperatura: string | null;
+        epl: string | null;
+        temperaturaProcesso: string | null;
+        pressaoProcesso: string | null;
+        volumeProcesso: string | null;
+        notes: string | null;
+      }>;
+    }
+  >();
+
+  const substances = new Map<
+    string,
+    {
+      substanceName: string;
+      orderIndex: number;
+      grupo: string | null;
+      classeTemperatura: string | null;
+      epl: string | null;
+      tipo: string | null;
+      zones: Set<string>;
+    }
+  >();
+
+  for (const row of rows) {
+    const areaName = (row.area_local ?? "").trim();
+    if (!areaName) continue;
+
+    if (!areas.has(areaName)) {
+      areas.set(areaName, {
+        areaName,
+        orderIndex: areas.size + 1,
+        description: null,
+        sources: [],
+      });
+    }
+
+    const area = areas.get(areaName)!;
+    const areaDescription = (row.area_descricao ?? "").trim();
+    if (areaDescription && !area.description) {
+      area.description = areaDescription;
+    }
+    area.sources.push({
+      tagReferencia: row.tag_referencia?.trim() || null,
+      substanceName: row.substancia,
+      sourceName: row.fonte_liberacao,
+      liberationDegree: row.grau_liberacao,
+      ventilationType: row.ventilacao_tipo,
+      ventilationDegree: row.grau_ventilacao,
+      ventilationAvailability: row.disponibilidade_ventilacao,
+      zone: row.zona,
+      extension: row.extensao,
+      grupo: row.grupo?.trim() || null,
+      classeTemperatura: row.classe_temperatura?.trim() || null,
+      epl: row.epl?.trim() || null,
+      temperaturaProcesso: row.temperatura_processo?.trim() || null,
+      pressaoProcesso: row.pressao_processo?.trim() || null,
+      volumeProcesso: row.volume_processo?.trim() || null,
+      notes: row.observacoes?.trim() || null,
+    });
+
+    const substanceName = (row.substancia ?? "").trim();
+    if (substanceName) {
+      if (!substances.has(substanceName)) {
+        substances.set(substanceName, {
+          substanceName,
+          orderIndex: substances.size + 1,
+          grupo: row.grupo?.trim() || null,
+          classeTemperatura: row.classe_temperatura?.trim() || null,
+          epl: row.epl?.trim() || null,
+          tipo: null,
+          zones: new Set<string>(),
+        });
+      }
+      const sub = substances.get(substanceName)!;
+      const z = (row.zona ?? "").trim();
+      if (z) sub.zones.add(z);
+    }
+  }
+
+  // Auto-detecção de tipo (gás/vapor vs poeira/fibra) com base nas zonas observadas.
+  const GAS_ZONES = new Set(["0", "1", "2"]);
+  const DUST_ZONES = new Set(["20", "21", "22"]);
+  const detectedSubstances = Array.from(substances.values()).map((sub) => {
+    const hasGas = Array.from(sub.zones).some((z) => GAS_ZONES.has(z));
+    const hasDust = Array.from(sub.zones).some((z) => DUST_ZONES.has(z));
+    let tipo: string | null = null;
+    if (hasGas && !hasDust) tipo = "gas_vapor";
+    else if (hasDust && !hasGas) tipo = "poeira_fibra";
+    return {
+      substanceName: sub.substanceName,
+      orderIndex: sub.orderIndex,
+      grupo: sub.grupo,
+      classeTemperatura: sub.classeTemperatura,
+      epl: sub.epl,
+      tipo,
+    };
+  });
+
+  return {
+    areas: Array.from(areas.values()),
+    substances: detectedSubstances,
+  };
+}
+
+async function persistDhaData(tx: {
+  dhaSpreadsheetUpload: typeof prisma.dhaSpreadsheetUpload;
+  dhaSpreadsheetRow: typeof prisma.dhaSpreadsheetRow;
+  dhaReportEquipment: typeof prisma.dhaReportEquipment;
+}, {
+  jobId,
+  originalFilename,
+  file,
+  validation,
+  reportId,
+}: {
+  jobId: string;
+  originalFilename: string;
+  file: File;
+  validation: UploadValidationResult;
+  reportId: string;
+}) {
+  const upload = await tx.dhaSpreadsheetUpload.create({
+    data: {
+      jobId,
+      originalFilename,
+      mimeType: file.type || "application/octet-stream",
+      size: file.size,
+      rowCount: validation.rowCount,
+      metadata: validation.metadata,
+    },
+  });
+
+  for (let i = 0; i < validation.rows.length; i += BATCH_SIZE) {
+    const batch = validation.rows.slice(i, i + BATCH_SIZE);
+    await tx.dhaSpreadsheetRow.createMany({
+      data: batch.map((row, batchIndex) => ({
+        uploadId: upload.id,
+        rowIndex: i + batchIndex + 1,
+        equipmentName: row["Equipamento"] || null,
+        equipmentDescription: row["Descrição do equipamento"] || null,
+        rawJson: row,
+        normalizedJson: normalizeRow(row),
+      })),
+    });
+  }
+
+  const equipmentEntries = collectDhaEquipmentSeeds(validation.rows);
+  if (equipmentEntries.length > 0) {
+    await tx.dhaReportEquipment.createMany({
+      data: equipmentEntries.map((entry, index) => ({
+        reportId,
+        equipmentName: entry.equipmentName,
+        equipmentDescription: entry.equipmentDescription,
+        orderIndex: index + 1,
+      })),
+    });
+  }
+
+  return { equipmentCount: equipmentEntries.length };
+}
+
+async function persistAreaData(tx: {
+  areaSpreadsheetUpload: typeof prisma.areaSpreadsheetUpload;
+  areaSpreadsheetRow: typeof prisma.areaSpreadsheetRow;
+  areaReportArea: typeof prisma.areaReportArea;
+  areaReportSource: typeof prisma.areaReportSource;
+  areaReportSubstance: typeof prisma.areaReportSubstance;
+}, {
+  jobId,
+  originalFilename,
+  file,
+  validation,
+  reportId,
+}: {
+  jobId: string;
+  originalFilename: string;
+  file: File;
+  validation: UploadValidationResult;
+  reportId: string;
+}) {
+  const upload = await tx.areaSpreadsheetUpload.create({
+    data: {
+      jobId,
+      originalFilename,
+      mimeType: file.type || "application/octet-stream",
+      size: file.size,
+      rowCount: validation.rowCount,
+      metadata: validation.metadata,
+    },
+  });
+
+  for (let i = 0; i < validation.rows.length; i += BATCH_SIZE) {
+    const batch = validation.rows.slice(i, i + BATCH_SIZE);
+    await tx.areaSpreadsheetRow.createMany({
+      data: batch.map((row, batchIndex) => ({
+        uploadId: upload.id,
+        rowIndex: i + batchIndex + 1,
+        areaLocal: row.area_local,
+        tagReferencia: row.tag_referencia || null,
+        substancia: row.substancia,
+        fonteLiberacao: row.fonte_liberacao,
+        grauLiberacao: row.grau_liberacao,
+        ventilacaoTipo: row.ventilacao_tipo,
+        grauVentilacao: row.grau_ventilacao,
+        disponibilidadeVentilacao: row.disponibilidade_ventilacao,
+        zona: row.zona,
+        extensao: row.extensao,
+        grupo: row.grupo || null,
+        classeTemperatura: row.classe_temperatura || null,
+        epl: row.epl || null,
+        observacoes: row.observacoes || null,
+        temperaturaProcesso: row.temperatura_processo || null,
+        pressaoProcesso: row.pressao_processo || null,
+        volumeProcesso: row.volume_processo || null,
+        rawJson: row,
+        normalizedJson: row,
+      })),
+    });
+  }
+
+  const seeds = collectAreaSeeds(validation.rows);
+
+  for (const area of seeds.areas) {
+    const createdArea = await tx.areaReportArea.create({
+      data: {
+        reportId,
+        areaName: area.areaName,
+        orderIndex: area.orderIndex,
+        ...(area.description && { description: area.description }),
+      },
+    });
+
+    if (area.sources.length > 0) {
+      await tx.areaReportSource.createMany({
+        data: area.sources.map((source, index) => ({
+          areaId: createdArea.id,
+          orderIndex: index + 1,
+          tagReferencia: source.tagReferencia,
+          substanceName: source.substanceName,
+          sourceName: source.sourceName,
+          liberationDegree: source.liberationDegree,
+          ventilationType: source.ventilationType,
+          ventilationDegree: source.ventilationDegree,
+          ventilationAvailability: source.ventilationAvailability,
+          zone: source.zone,
+          extension: source.extension,
+          grupo: source.grupo,
+          classeTemperatura: source.classeTemperatura,
+          epl: source.epl,
+          temperaturaProcesso: source.temperaturaProcesso,
+          pressaoProcesso: source.pressaoProcesso,
+          volumeProcesso: source.volumeProcesso,
+          notes: source.notes,
+        })),
+      });
+    }
+  }
+
+  if (seeds.substances.length > 0) {
+    await tx.areaReportSubstance.createMany({
+      data: seeds.substances.map((substance) => ({
+        reportId,
+        substanceName: substance.substanceName,
+        orderIndex: substance.orderIndex,
+        grupo: substance.grupo,
+        classeTemperatura: substance.classeTemperatura,
+        epl: substance.epl,
+        tipo: substance.tipo,
+      })),
+    });
+  }
+
+  return { areaCount: seeds.areas.length, substanceCount: seeds.substances.length };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,7 +393,7 @@ export async function GET(request: NextRequest) {
     if (!queryResult.success) {
       return error(
         "INVALID_QUERY",
-        queryResult.error.issues.map((i) => i.message).join("; "),
+        queryResult.error.issues.map((issue) => issue.message).join("; "),
       );
     }
 
@@ -71,15 +408,12 @@ export async function GET(request: NextRequest) {
     return success(jobs);
   } catch (err) {
     console.error("[GET /api/jobs]", err);
-    return error("INTERNAL_ERROR", "Failed to fetch jobs", 500);
+    return error("DATABASE_UNAVAILABLE", getDatabaseErrorMessage(err), 503);
   }
 }
 
-// ─── POST /api/jobs ───────────────────────────────────────
-
 export async function POST(request: NextRequest) {
   try {
-    // 1. Parse multipart/form-data
     let formData: FormData;
     try {
       formData = await request.formData();
@@ -88,18 +422,19 @@ export async function POST(request: NextRequest) {
     }
 
     const file = formData.get("file") as File | null;
-    const profile = (formData.get("profile") as string | null)?.trim();
+    const documentType = resolveRequestedDocumentType(formData);
 
-    // 2. Validar campos obrigatórios
     if (!file || !(file instanceof File) || file.size === 0) {
       return error("MISSING_FILE", "O campo 'file' é obrigatório.");
     }
 
-    if (!profile) {
-      return error("MISSING_PROFILE", "O campo 'profile' é obrigatório.");
+    if (!documentType) {
+      return error(
+        "MISSING_DOCUMENT_TYPE",
+        "O campo 'documentType' é obrigatório e deve ser 'dha' ou 'areas'.",
+      );
     }
 
-    // 3. Validar extensão
     const originalFilename = file.name;
     const ext = originalFilename.toLowerCase().split(".").pop();
     if (
@@ -112,7 +447,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Validar tamanho
     if (file.size > MAX_UPLOAD_BYTES) {
       return error(
         "FILE_TOO_LARGE",
@@ -120,7 +454,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. Ler arquivo em memória e parsear
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
@@ -134,26 +467,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Validar contra o contrato
-    const validation = validateSpreadsheet(rawRows);
+    let validation: UploadValidationResult;
+    if (documentType === "areas") {
+      const result = validateAreaSpreadsheet(rawRows);
+      validation = {
+        valid: result.valid,
+        errors: result.errors,
+        warnings: result.warnings,
+        rows: result.rows,
+        rowCount: result.rowCount,
+        metadata: result.metadata,
+      };
+    } else {
+      const result = validateSpreadsheet(rawRows);
+      validation = {
+        valid: result.valid,
+        errors: result.errors,
+        warnings: result.warnings,
+        rows: result.rows,
+        rowCount: result.rowCount,
+        metadata: result.metadata as unknown as Record<string, string>,
+      };
+    }
 
     if (!validation.valid) {
       return error(
         "INVALID_SPREADSHEET",
-        `A planilha contém ${validation.errors.length} erro(s) de validação.`,
+        `A planilha de ${getDocumentTypeLabel(documentType)} contém ${validation.errors.length} erro(s) de validação.`,
         422,
         validation.errors,
       );
     }
 
-    // 7. Persistir tudo em transação Prisma
-    //    Job + Upload + Rows + Steps + Report + ReportEquipments
     const result = await prisma.$transaction(async (tx) => {
-      // 7a. Criar Job com status awaiting_complement
       const job = await tx.job.create({
         data: {
           filename: originalFilename,
-          profile,
+          profile: documentTypeToLegacyProfile(documentType),
+          documentType,
+          documentSchemaVersion: DOCUMENT_SCHEMA_V2,
           status: "awaiting_complement",
           progress: 0,
           currentStep: "Aguardando complementação",
@@ -161,34 +513,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // 7b. Criar SpreadsheetUpload
-      const upload = await tx.spreadsheetUpload.create({
-        data: {
-          jobId: job.id,
-          originalFilename,
-          mimeType: file.type || "application/octet-stream",
-          size: file.size,
-          rowCount: validation.rowCount,
-          metadata: validation.metadata as Record<string, string>,
-        },
-      });
-
-      // 7c. Inserir SpreadsheetRows em batches
-      for (let i = 0; i < validation.rows.length; i += BATCH_SIZE) {
-        const batch = validation.rows.slice(i, i + BATCH_SIZE);
-        await tx.spreadsheetRow.createMany({
-          data: batch.map((row, batchIdx) => ({
-            uploadId: upload.id,
-            rowIndex: i + batchIdx + 1, // 1-based
-            equipmentName: row["Equipamento"] || null,
-            equipmentDescription: row["Descrição do equipamento"] || null,
-            rawJson: row,
-            normalizedJson: normalizeRow(row),
-          })),
-        });
-      }
-
-      // 7d. Criar etapas do pipeline
       await tx.jobStep.createMany({
         data: PIPELINE_STEPS.map((step) => ({
           jobId: job.id,
@@ -199,46 +523,48 @@ export async function POST(request: NextRequest) {
         })),
       });
 
-      // 7e. Criar Report vazio (será preenchido na complementação)
       const report = await tx.report.create({
-        data: { jobId: job.id },
+        data: {
+          jobId: job.id,
+          ...(documentType === "areas" && {
+            ...(validation.metadata?.cliente && {
+              razaoSocial: validation.metadata.cliente,
+            }),
+            ...(validation.metadata?.tipo_unidade && {
+              tipoUnidade: validation.metadata.tipo_unidade,
+            }),
+            ...(validation.metadata?.local_vistoriado && {
+              localVistoriado: validation.metadata.local_vistoriado,
+            }),
+            ...(validation.metadata?.contrato && {
+              contrato: validation.metadata.contrato,
+            }),
+            ...(validation.metadata?.art && {
+              artNumero: validation.metadata.art,
+            }),
+          }),
+        },
       });
 
-      // 7f. Agrupar equipamentos por nome e criar ReportEquipments
-      const equipmentGroups = new Map<
-        string,
-        { name: string; description: string | null }
-      >();
-
-      for (const row of validation.rows) {
-        const name = (row["Equipamento"] ?? "").trim();
-        if (!name) continue;
-        if (!equipmentGroups.has(name)) {
-          equipmentGroups.set(name, {
-            name,
-            description:
-              (row["Descrição do equipamento"] ?? "").trim() || null,
-          });
-        }
-      }
-
-      const equipmentEntries = Array.from(equipmentGroups.values());
-
-      if (equipmentEntries.length > 0) {
-        await tx.reportEquipment.createMany({
-          data: equipmentEntries.map((eq, idx) => ({
-            reportId: report.id,
-            equipmentName: eq.name,
-            equipmentDescription: eq.description,
-            orderIndex: idx + 1,
-          })),
+      const persistedData = documentType === "areas"
+        ? await persistAreaData(tx, {
+          jobId: job.id,
+          originalFilename,
+          file,
+          validation,
+          reportId: report.id,
+        })
+        : await persistDhaData(tx, {
+          jobId: job.id,
+          originalFilename,
+          file,
+          validation,
+          reportId: report.id,
         });
-      }
 
-      return { job, report, equipmentCount: equipmentEntries.length };
+      return { job, report, persistedData };
     });
 
-    // 8. Upload do clone no Supabase Storage (fora da transação)
     const { job } = result;
     const now = new Date();
     const archiveExpiresAt = getArchiveExpirationDate(now);
@@ -258,7 +584,6 @@ export async function POST(request: NextRequest) {
         throw storageError;
       }
 
-      // Salvar path e expiração no Job + marcar step 1 como done
       await prisma.$transaction([
         prisma.job.update({
           where: { id: job.id },
@@ -276,21 +601,15 @@ export async function POST(request: NextRequest) {
       ]);
     } catch (storageErr) {
       console.error("[POST /api/jobs] Storage upload failed:", storageErr);
-      // Não falha o request — job + report já foram criados
     }
 
-    // 9. Retorno — front redireciona para complementação
     const responseData: Record<string, unknown> = {
       jobId: job.id,
       redirectTo: `/jobs/${job.id}/complement`,
     };
 
-    // Incluir avisos da matriz de cruzamento (não-bloqueantes)
     if (validation.warnings.length > 0) {
       responseData.warnings = validation.warnings;
-      console.warn(
-        `[POST /api/jobs] ${validation.warnings.length} aviso(s) da matriz de cruzamento para job ${job.id}`,
-      );
     }
 
     return success(responseData, 201);

@@ -3,6 +3,7 @@ import { JobStatusBadge } from "./JobStatusBadge";
 import { JobActions } from "./JobActions";
 import { Progress } from "@/components/ui";
 import { formatCostUsd } from "@/lib/formatCost";
+import { getDocumentTypeLabel, getJobDocumentType } from "@/lib/documents";
 import styles from "./JobsTable.module.css";
 
 interface JobsTableProps {
@@ -58,7 +59,7 @@ export function JobsTable({ jobs }: JobsTableProps) {
               {jobs.map((job) => (
                 <tr key={job.id}>
                   <td className={styles.filename}>{job.filename ?? "—"}</td>
-                  <td>{job.profile}</td>
+                  <td>{getDocumentTypeLabel(getJobDocumentType(job))}</td>
                   <td>
                     <JobStatusBadge status={job.status} />
                   </td>
@@ -97,7 +98,7 @@ export function JobsTable({ jobs }: JobsTableProps) {
             <div className={styles.jobCardMeta}>
               <div>
                 <div className={styles.jobCardLabel}>Perfil</div>
-                <div className={styles.jobCardValue}>{job.profile}</div>
+                <div className={styles.jobCardValue}>{getDocumentTypeLabel(getJobDocumentType(job))}</div>
               </div>
               <div>
                 <div className={styles.jobCardLabel}>Criado em</div>

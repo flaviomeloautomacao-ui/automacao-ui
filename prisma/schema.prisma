@@ -33,12 +33,24 @@ enum JobStatus {
   error
 }
 
+enum DocumentType {
+  dha
+  areas
+}
+
+enum DocumentSchemaVersion {
+  legacy
+  v2
+}
+
 // ─── Models ───────────────────────────────────────────────
 
 model Job {
   id           String    @id @default(uuid()) @db.Uuid
   filename     String?
   profile      String    // ex: "dust", "gas", "vapors"
+  documentType DocumentType? @map("document_type")
+  documentSchemaVersion DocumentSchemaVersion @default(legacy) @map("document_schema_version")
   status       JobStatus @default(queued)
   progress     Int?      @default(0) // 0-100
   currentStep  String?   @map("current_step") // etapa legível: "Gerando recomendações…"
@@ -67,13 +79,15 @@ model Job {
   dedupSourceJobId   String?   @map("dedup_source_job_id") @db.Uuid
 
   // Relações
-  spreadsheetUpload SpreadsheetUpload?
-  steps             JobStep[]
-  report            Report?
-  llmUsageLogs      LlmUsageLog[]
-  pipelineVersion   PipelineVersion?   @relation(fields: [pipelineVersionId], references: [id])
-  dedupSourceJob    Job?               @relation("JobDedup", fields: [dedupSourceJobId], references: [id])
-  dedupDerivedJobs  Job[]              @relation("JobDedup")
+  spreadsheetUpload     SpreadsheetUpload?
+  dhaSpreadsheetUpload  DhaSpreadsheetUpload?
+  areaSpreadsheetUpload AreaSpreadsheetUpload?
+  steps                 JobStep[]
+  report                Report?
+  llmUsageLogs          LlmUsageLog[]
+  pipelineVersion       PipelineVersion?     @relation(fields: [pipelineVersionId], references: [id])
+  dedupSourceJob        Job?                 @relation("JobDedup", fields: [dedupSourceJobId], references: [id])
+  dedupDerivedJobs      Job[]                @relation("JobDedup")
 
   @@map("jobs")
 }
@@ -163,13 +177,24 @@ model Report {
   artNumero       String?   @map("art_numero")
   codigoDocumento String?   @map("codigo_documento")
 
+  // Áreas — campos extras para o template Project-Explo (Fase 2)
+  escopoComplementar  String? @map("escopo_complementar") @db.Text
+  tipoUnidade         String? @map("tipo_unidade")
+  equipeResponsavel   Json?   @map("equipe_responsavel")
+  equipeProjectExplo  Json?   @map("equipe_project_explo")
+  artPdfUrl           String? @map("art_pdf_url")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relações
-  job        Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  equipments ReportEquipment[]
-  revisions  ReportRevision[]
+  job              Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  equipments       ReportEquipment[]
+  dhaEquipments    DhaReportEquipment[]
+  areaReportAreas  AreaReportArea[]
+  areaSubstances   AreaReportSubstance[]
+  areaReferences   AreaReferenceDocument[]
+  revisions        ReportRevision[]
 
   @@map("reports")
 }
@@ -234,11 +259,270 @@ model EquipmentImage {
   @@map("equipment_images")
 }
 
+model DhaSpreadsheetUpload {
+  id               String @id @default(uuid()) @db.Uuid
+  jobId            String @unique @map("job_id") @db.Uuid
+  originalFilename String @map("original_filename")
+  mimeType         String @map("mime_type")
+  size             Int
+  rowCount         Int    @map("row_count")
+  metadata         Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  job  Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  rows DhaSpreadsheetRow[]
+
+  @@map("dha_spreadsheet_uploads")
+}
+
+model DhaSpreadsheetRow {
+  id                   String  @id @default(uuid()) @db.Uuid
+  uploadId             String  @map("upload_id") @db.Uuid
+  rowIndex             Int     @map("row_index")
+  equipmentName        String? @map("equipment_name")
+  equipmentDescription String? @map("equipment_description")
+  rawJson              Json    @map("raw_json")
+  normalizedJson       Json    @map("normalized_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  upload DhaSpreadsheetUpload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+
+  @@index([uploadId])
+  @@map("dha_spreadsheet_rows")
+}
+
+model DhaReportEquipment {
+  id       String @id @default(uuid()) @db.Uuid
+  reportId String @map("report_id") @db.Uuid
+
+  equipmentName        String  @map("equipment_name")
+  equipmentDescription String? @map("equipment_description")
+  orderIndex           Int     @map("order_index")
+
+  localInstalacao   String? @map("local_instalacao")
+  funcaoOperacional String? @map("funcao_operacional")
+  observacoesExtras String? @map("observacoes_extras") @db.Text
+  extraJson         Json?   @map("extra_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  report Report             @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  images DhaEquipmentImage[]
+
+  @@index([reportId])
+  @@map("dha_report_equipments")
+}
+
+model DhaEquipmentImage {
+  id          String @id @default(uuid()) @db.Uuid
+  equipmentId String @map("equipment_id") @db.Uuid
+
+  publicId  String @map("public_id")
+  secureUrl String @map("secure_url")
+  width     Int?
+  height    Int?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  equipment DhaReportEquipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@index([equipmentId])
+  @@map("dha_equipment_images")
+}
+
+model AreaSpreadsheetUpload {
+  id               String @id @default(uuid()) @db.Uuid
+  jobId            String @unique @map("job_id") @db.Uuid
+  originalFilename String @map("original_filename")
+  mimeType         String @map("mime_type")
+  size             Int
+  rowCount         Int    @map("row_count")
+  metadata         Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  job  Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  rows AreaSpreadsheetRow[]
+
+  @@map("area_spreadsheet_uploads")
+}
+
+model AreaSpreadsheetRow {
+  id                         String  @id @default(uuid()) @db.Uuid
+  uploadId                   String  @map("upload_id") @db.Uuid
+  rowIndex                   Int     @map("row_index")
+  areaLocal                  String  @map("area_local")
+  tagReferencia              String? @map("tag_referencia")
+  substancia                 String
+  fonteLiberacao             String  @map("fonte_liberacao")
+  grauLiberacao              String  @map("grau_liberacao")
+  ventilacaoTipo             String  @map("ventilacao_tipo")
+  grauVentilacao             String  @map("grau_ventilacao")
+  disponibilidadeVentilacao  String  @map("disponibilidade_ventilacao")
+  zona                       String
+  extensao                   String
+  grupo                      String?
+  classeTemperatura          String? @map("classe_temperatura")
+  epl                        String?
+  observacoes                String? @db.Text
+  temperaturaProcesso        String? @map("temperatura_processo")
+  pressaoProcesso            String? @map("pressao_processo")
+  volumeProcesso             String? @map("volume_processo")
+  rawJson                    Json    @map("raw_json")
+  normalizedJson             Json    @map("normalized_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  upload AreaSpreadsheetUpload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+
+  @@index([uploadId])
+  @@map("area_spreadsheet_rows")
+}
+
+model AreaReportArea {
+  id                  String @id @default(uuid()) @db.Uuid
+  reportId            String @map("report_id") @db.Uuid
+  areaName            String @map("area_name")
+  orderIndex          Int    @map("order_index")
+  description         String? @db.Text
+  operationalNotes    String? @map("operational_notes") @db.Text
+  ventilationPremises String? @map("ventilation_premises") @db.Text
+  extraJson           Json?   @map("extra_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  report  Report               @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  sources AreaReportSource[]
+  photos  AreaReportAreaImage[]
+
+  @@index([reportId])
+  @@map("area_report_areas")
+}
+
+model AreaReportAreaImage {
+  id        String @id @default(uuid()) @db.Uuid
+  areaId    String @map("area_id") @db.Uuid
+
+  publicId  String @map("public_id")
+  secureUrl String @map("secure_url")
+  width     Int?
+  height    Int?
+  caption   String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  area AreaReportArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@index([areaId])
+  @@map("area_report_area_images")
+}
+
+model AreaReportSource {
+  id                        String @id @default(uuid()) @db.Uuid
+  areaId                    String @map("area_id") @db.Uuid
+  orderIndex                Int    @map("order_index")
+  tagReferencia             String? @map("tag_referencia")
+  substanceName             String  @map("substance_name")
+  sourceName                String  @map("source_name")
+  liberationDegree          String  @map("liberation_degree")
+  ventilationType           String  @map("ventilation_type")
+  ventilationDegree         String  @map("ventilation_degree")
+  ventilationAvailability   String  @map("ventilation_availability")
+  zone                      String
+  extension                 String
+  grupo                     String?
+  classeTemperatura         String? @map("classe_temperatura")
+  epl                       String?
+  temperaturaProcesso       String? @map("temperatura_processo")
+  pressaoProcesso           String? @map("pressao_processo")
+  volumeProcesso            String? @map("volume_processo")
+  notes                     String? @db.Text
+  extraJson                 Json?   @map("extra_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  area AreaReportArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@index([areaId])
+  @@map("area_report_sources")
+}
+
+model AreaReportSubstance {
+  id                 String @id @default(uuid()) @db.Uuid
+  reportId           String @map("report_id") @db.Uuid
+  substanceName      String @map("substance_name")
+  orderIndex         Int    @map("order_index")
+  grupo              String?
+  classeTemperatura  String? @map("classe_temperatura")
+  epl                String?
+  propertiesJson     Json?   @map("properties_json")
+  notes              String? @db.Text
+
+  // Campos físico-químicos explícitos para a Tabela 1 (Fase 2)
+  // tipo: "gas_vapor" | "poeira_fibra" — controla qual tabela renderizar
+  tipo               String?
+  pontoFulgor        String? @map("ponto_fulgor")
+  lii                String?
+  densidadeRelativa  String? @map("densidade_relativa")
+  tai                String?
+  cme                String?
+  mit                String?
+  sitCamada          String? @map("sit_camada")
+  tmax               String?
+  st                 String?
+  legendNotes        String[] @map("legend_notes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("area_report_substances")
+}
+
+model AreaReferenceDocument {
+  id           String @id @default(uuid()) @db.Uuid
+  reportId     String @map("report_id") @db.Uuid
+  orderIndex   Int    @map("order_index")
+  title        String
+  documentCode String? @map("document_code")
+  documentUrl  String? @map("document_url")
+  notes        String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("area_reference_documents")
+}
+
 // ─── Tabelas pré-existentes (Supabase) ────────────────────
 
 /// Esta tabela já existia no Supabase (não gerenciada por migrations).
 /// Contains row level security. See: https://pris.ly/d/row-level-security
 model konis_db {
+  id        BigInt                 @id @default(autoincrement())
+  content   String?
+  metadata  Json?
+  embedding Unsupported("vector")?
+}
+
+model konis_db_DHA {
+  id        BigInt                 @id @default(autoincrement())
+  content   String?
+  metadata  Json?
+  embedding Unsupported("vector")?
+}
+
+model konis_db_ClassificacaoDeAreas {
   id        BigInt                 @id @default(autoincrement())
   content   String?
   metadata  Json?

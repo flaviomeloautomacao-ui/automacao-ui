@@ -15,11 +15,7 @@ import { uploadImageServer } from "@/lib/cloudinaryServer";
 import type { ApiResponse } from "@/lib/types";
 import {
   generateImageName,
-  toPascalCase,
-  sanitizeContratoId,
   getNextImageIndex,
-  validateImageFileName,
-  EQUIPMENT_IMAGE_NAME_REGEX,
 } from "@/lib/normalizeEquipmentName";
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -63,18 +59,34 @@ export async function POST(request: NextRequest) {
 
     const file = formData.get("file") as File | null;
     const equipmentId = (formData.get("equipmentId") as string | null)?.trim();
+    const areaId = (formData.get("areaId") as string | null)?.trim();
+    const caption = (formData.get("caption") as string | null)?.trim() || null;
 
     // Validate required fields
     if (!file || !(file instanceof File) || file.size === 0) {
       return error("MISSING_FILE", "O campo 'file' é obrigatório.");
     }
 
-    if (!equipmentId) {
-      return error("MISSING_EQUIPMENT_ID", "O campo 'equipmentId' é obrigatório.");
+    if (!equipmentId && !areaId) {
+      return error(
+        "MISSING_TARGET_ID",
+        "Informe 'equipmentId' (DHA) ou 'areaId' (Áreas).",
+      );
     }
 
-    if (!UUID_RE.test(equipmentId)) {
+    if (equipmentId && areaId) {
+      return error(
+        "AMBIGUOUS_TARGET",
+        "Informe apenas 'equipmentId' OU 'areaId', não ambos.",
+      );
+    }
+
+    if (equipmentId && !UUID_RE.test(equipmentId)) {
       return error("INVALID_EQUIPMENT_ID", "equipmentId must be a valid UUID.");
+    }
+
+    if (areaId && !UUID_RE.test(areaId)) {
+      return error("INVALID_AREA_ID", "areaId must be a valid UUID.");
     }
 
     // Validate file type
@@ -93,9 +105,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Áreas: upload de foto por área (Fase 2) ─────────────
+    if (areaId) {
+      const area = await prisma.areaReportArea.findUnique({
+        where: { id: areaId },
+        select: {
+          id: true,
+          reportId: true,
+          areaName: true,
+          photos: { select: { publicId: true } },
+        },
+      });
+
+      if (!area) {
+        return error("AREA_NOT_FOUND", `Area ${areaId} not found`, 404);
+      }
+
+      const folder = `reports/${area.reportId}/areas/${area.id}`;
+      const nextIndex = area.photos.length;
+      const slug = area.areaName
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 60) || "area";
+      const publicIdName = `${slug}-${nextIndex}`;
+
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const cloudinaryResult = await uploadImageServer(buffer, {
+        folder,
+        publicId: publicIdName,
+      });
+
+      const image = await prisma.areaReportAreaImage.create({
+        data: {
+          areaId,
+          publicId: cloudinaryResult.public_id,
+          secureUrl: cloudinaryResult.secure_url,
+          width: cloudinaryResult.width,
+          height: cloudinaryResult.height,
+          caption,
+        },
+      });
+
+      return success(
+        {
+          id: image.id,
+          secureUrl: image.secureUrl,
+          publicId: image.publicId,
+          width: image.width,
+          height: image.height,
+          caption: image.caption,
+        },
+        201,
+      );
+    }
+
+    // ── DHA: upload por equipamento (fluxo original) ────────
     // Verify equipment exists and get context for naming
-    const equipment = await prisma.reportEquipment.findUnique({
-      where: { id: equipmentId },
+    const dhaEquipment = await prisma.dhaReportEquipment.findUnique({
+      where: { id: equipmentId! },
       select: {
         id: true,
         reportId: true,
@@ -109,14 +179,31 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const legacyEquipment = dhaEquipment
+      ? null
+      : await prisma.reportEquipment.findUnique({
+        where: { id: equipmentId! },
+        select: {
+          id: true,
+          reportId: true,
+          equipmentName: true,
+          report: {
+            select: { contrato: true },
+          },
+          images: {
+            select: { publicId: true },
+          },
+        },
+      });
+
+    const equipment = dhaEquipment ?? legacyEquipment;
+
     if (!equipment) {
       return error("EQUIPMENT_NOT_FOUND", `Equipment ${equipmentId} not found`, 404);
     }
 
     // ── Generate standardized public_id ───────────────────
     const contratoRaw = equipment.report?.contrato ?? "";
-    const contrato = sanitizeContratoId(contratoRaw);
-    const eqPascal = toPascalCase(equipment.equipmentName);
 
     // Calculate next available index from existing images
     const existingNames = equipment.images.map((img) => {
@@ -139,15 +226,25 @@ export async function POST(request: NextRequest) {
     });
 
     // Persist record
-    const image = await prisma.equipmentImage.create({
-      data: {
-        equipmentId,
-        publicId: cloudinaryResult.public_id,
-        secureUrl: cloudinaryResult.secure_url,
-        width: cloudinaryResult.width,
-        height: cloudinaryResult.height,
-      },
-    });
+    const image = dhaEquipment
+      ? await prisma.dhaEquipmentImage.create({
+        data: {
+          equipmentId: equipmentId!,
+          publicId: cloudinaryResult.public_id,
+          secureUrl: cloudinaryResult.secure_url,
+          width: cloudinaryResult.width,
+          height: cloudinaryResult.height,
+        },
+      })
+      : await prisma.equipmentImage.create({
+        data: {
+          equipmentId: equipmentId!,
+          publicId: cloudinaryResult.public_id,
+          secureUrl: cloudinaryResult.secure_url,
+          width: cloudinaryResult.width,
+          height: cloudinaryResult.height,
+        },
+      });
 
     return success(
       {
