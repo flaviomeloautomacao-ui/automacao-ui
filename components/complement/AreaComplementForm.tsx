@@ -20,7 +20,6 @@ type ReportFormValues = {
   contrato: string;
   observacoesGerais: string;
   tipoUnidade: string;
-  escopoComplementar: string;
 };
 
 export interface AreaComplementTeamMember {
@@ -128,7 +127,20 @@ interface Props {
   references: AreaComplementReference[];
 }
 
-const DEFAULT_AUTHOR = "Eng. Francisco Flávio Melo Cavalcante";
+const COVER_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp";
+const IMAGE_ACCEPT = `${COVER_IMAGE_ACCEPT},image/gif`;
+const COVER_IMAGE_FORMATS = "JPEG, PNG ou WebP";
+const IMAGE_FORMATS = "JPEG, PNG, WebP ou GIF";
+const KONIS_RESPONSAVEL_TECNICO = "Francisco Flávio Melo Cavalcante";
+const KONIS_CREA = "CREA SP – 5060562076";
+
+function rejectedImageMessage(files: File[], formats: string): string {
+  const prefix =
+    files.length === 1
+      ? `Arquivo recusado: ${files[0].name}.`
+      : `${files.length} arquivos recusados.`;
+  return `${prefix} Use ${formats}.`;
+}
 
 const STEP_LABELS = [
   "Dados Gerais",
@@ -136,10 +148,6 @@ const STEP_LABELS = [
   "Substâncias e Referências",
   "Revisão",
 ] as const;
-
-function todayBR() {
-  return new Date().toLocaleDateString("pt-BR");
-}
 
 function extractProperties(value: unknown): string {
   if (!value) return "";
@@ -250,7 +258,6 @@ function getSourceValidation(source: {
 export function AreaComplementForm({
   jobId,
   report,
-  revisions: initialRevisions,
   areas: initialAreas,
   substances: initialSubstances,
   references: initialReferences,
@@ -262,14 +269,13 @@ export function AreaComplementForm({
   const [apiError, setApiError] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState(report.coverImageUrl ?? null);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [coverDropError, setCoverDropError] = useState<string | null>(null);
+  const [areaDropError, setAreaDropError] = useState<{
+    areaId: string;
+    message: string;
+  } | null>(null);
   const [artNumero, setArtNumero] = useState(report.artNumero ?? "");
   const [codigoDocumento, setCodigoDocumento] = useState(report.codigoDocumento ?? "");
-  const [equipeResponsavel, setEquipeResponsavel] = useState<AreaComplementTeamMember[]>(
-    Array.isArray(report.equipeResponsavel) ? report.equipeResponsavel : [],
-  );
-  const [equipeProjectExplo, setEquipeProjectExplo] = useState<AreaComplementTeamMember[]>(
-    Array.isArray(report.equipeProjectExplo) ? report.equipeProjectExplo : [],
-  );
   const [imagesByArea, setImagesByArea] = useState<Record<string, AreaComplementImage[]>>(() => {
     const map: Record<string, AreaComplementImage[]> = {};
     for (const area of initialAreas) {
@@ -279,11 +285,6 @@ export function AreaComplementForm({
   });
   const uploadingAreaRef = useRef<Set<string>>(new Set());
   const [uploadingAreas, setUploadingAreas] = useState<Set<string>>(new Set());
-  const [revisions, setRevisions] = useState<AreaComplementRevision[]>(
-    initialRevisions.length > 0
-      ? initialRevisions
-      : [{ version: "00", date: todayBR(), author: DEFAULT_AUTHOR, description: "Emissão inicial" }],
-  );
   const [areas, setAreas] = useState(initialAreas);
   const [substances, setSubstances] = useState(
     initialSubstances.map((item) => ({
@@ -309,7 +310,6 @@ export function AreaComplementForm({
       contrato: report.contrato ?? "",
       observacoesGerais: report.observacoesGerais ?? "",
       tipoUnidade: report.tipoUnidade ?? "",
-      escopoComplementar: report.escopoComplementar ?? "",
     },
   });
 
@@ -330,10 +330,9 @@ export function AreaComplementForm({
             ...getValues(),
             artNumero,
             codigoDocumento,
-            equipeResponsavel,
-            equipeProjectExplo,
+            responsavel: KONIS_RESPONSAVEL_TECNICO,
+            registroProfissional: KONIS_CREA,
           },
-          revisions,
           areas: areas.map((area) => ({
             id: area.id,
             description: area.description ?? "",
@@ -416,6 +415,7 @@ export function AreaComplementForm({
   }
 
   async function uploadCover(file: File) {
+    setCoverDropError(null);
     setUploadingCover(true);
     try {
       const form = new FormData();
@@ -500,52 +500,9 @@ export function AreaComplementForm({
     );
   }
 
-  function addRevision() {
-    setRevisions((current) => [
-      ...current,
-      {
-        version: String(current.length).padStart(2, "0"),
-        date: todayBR(),
-        author: DEFAULT_AUTHOR,
-        description: "",
-      },
-    ]);
-  }
-
-  function removeRevision(index: number) {
-    if (revisions.length <= 1) return;
-    setRevisions((current) => current.filter((_, i) => i !== index));
-  }
-
-  function updateRevision(index: number, field: keyof AreaComplementRevision, value: string) {
-    setRevisions((current) =>
-      current.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
-    );
-  }
-
-  // ── Equipe editors ───────────────────────────
-  function addTeamMember(setter: React.Dispatch<React.SetStateAction<AreaComplementTeamMember[]>>) {
-    setter((current) => [...current, { nome: "", papel: "", registro: "" }]);
-  }
-  function removeTeamMember(
-    setter: React.Dispatch<React.SetStateAction<AreaComplementTeamMember[]>>,
-    index: number,
-  ) {
-    setter((current) => current.filter((_, i) => i !== index));
-  }
-  function updateTeamMember(
-    setter: React.Dispatch<React.SetStateAction<AreaComplementTeamMember[]>>,
-    index: number,
-    field: keyof AreaComplementTeamMember,
-    value: string,
-  ) {
-    setter((current) =>
-      current.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
-    );
-  }
-
   // ── Image upload / delete (per-area) ──────────────
   async function handleAreaImageUpload(areaId: string, file: File) {
+    setAreaDropError((current) => (current?.areaId === areaId ? null : current));
     uploadingAreaRef.current.add(areaId);
     setUploadingAreas(new Set(uploadingAreaRef.current));
     try {
@@ -591,8 +548,10 @@ export function AreaComplementForm({
   // ── Batch upload com auto-match por nome (A.1) ───────────────────
   const [batchPreview, setBatchPreview] = useState<AreaImageMatch[]>([]);
   const [batchUploading, setBatchUploading] = useState(false);
+  const [batchDropError, setBatchDropError] = useState<string | null>(null);
 
   function handleBatchSelect(files: File[]) {
+    setBatchDropError(null);
     if (files.length === 0) {
       setBatchPreview([]);
       return;
@@ -715,6 +674,18 @@ export function AreaComplementForm({
                       onChange={(e) => setArtNumero(e.target.value)}
                     />
                   </Field>
+                  <div className={css.fieldFull}>
+                    <div className={css.staticBlock}>
+                      <span className={css.staticBlockTitle}>Elaboração</span>
+                      <p className={css.staticBlockText}>
+                        Konis Ex do Brasil Ltda.
+                      </p>
+                      <p className={css.staticBlockText}>
+                        Responsável Técnico: {KONIS_RESPONSAVEL_TECNICO}
+                      </p>
+                      <p className={css.staticBlockText}>{KONIS_CREA}</p>
+                    </div>
+                  </div>
                   <Field label="Observações Gerais" full>
                     <textarea
                       className={css.textarea}
@@ -722,55 +693,20 @@ export function AreaComplementForm({
                       {...register("observacoesGerais")}
                     />
                   </Field>
-                  <Field label="Escopo Complementar" full>
-                    <textarea
-                      className={css.textarea}
-                      rows={4}
-                      placeholder="Descreva o escopo complementar do laudo (premissas, limitações, referências adicionais)…"
-                      {...register("escopoComplementar")}
-                    />
-                  </Field>
                 </div>
-
-                <div className={acss.sectionHeader} style={{ marginTop: "1rem" }}>
-                  <h3 className={acss.sectionTitle}>Equipe Responsável</h3>
-                  <Button
-                    variant="secondary"
-                    type="button"
-                    onClick={() => addTeamMember(setEquipeResponsavel)}
-                  >
-                    + Adicionar membro
-                  </Button>
-                </div>
-                <TeamTable
-                  members={equipeResponsavel}
-                  onUpdate={(i, f, v) => updateTeamMember(setEquipeResponsavel, i, f, v)}
-                  onRemove={(i) => removeTeamMember(setEquipeResponsavel, i)}
-                />
-
-                <div className={acss.sectionHeader} style={{ marginTop: "1rem" }}>
-                  <h3 className={acss.sectionTitle}>Equipe Project Explo</h3>
-                  <Button
-                    variant="secondary"
-                    type="button"
-                    onClick={() => addTeamMember(setEquipeProjectExplo)}
-                  >
-                    + Adicionar membro
-                  </Button>
-                </div>
-                <TeamTable
-                  members={equipeProjectExplo}
-                  onUpdate={(i, f, v) => updateTeamMember(setEquipeProjectExplo, i, f, v)}
-                  onRemove={(i) => removeTeamMember(setEquipeProjectExplo, i)}
-                />
 
                 <div className={css.coverSection}>
                   <strong className={css.label}>Imagem de Capa</strong>
                   <DropZone
                     className={`${css.dropzone} ${css.coverDropzone}`}
                     activeClassName={css.dragActive}
-                    accept="image/jpeg,image/png,image/webp"
+                    accept={COVER_IMAGE_ACCEPT}
                     disabled={uploadingCover}
+                    onRejectedFiles={(files) =>
+                      setCoverDropError(
+                        rejectedImageMessage(files, COVER_IMAGE_FORMATS),
+                      )
+                    }
                     onFiles={(files) => {
                       const file = files[0];
                       if (file) void uploadCover(file);
@@ -782,6 +718,9 @@ export function AreaComplementForm({
                     </span>
                     <span className={css.dropzoneHint}>JPG, PNG ou WEBP</span>
                   </DropZone>
+                  {coverDropError && (
+                    <span className={css.dropzoneError}>{coverDropError}</span>
+                  )}
                   {coverImageUrl && (
                     <div className={css.coverPreview}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -797,74 +736,6 @@ export function AreaComplementForm({
                   )}
                 </div>
 
-                <div className={css.revisionSection}>
-                  <div className={css.revisionHeader}>
-                    <strong className={css.label}>Revisões</strong>
-                    <Button variant="secondary" onClick={addRevision} type="button">
-                      + Adicionar revisão
-                    </Button>
-                  </div>
-                  <div className={css.revisionTableWrap}>
-                    <table className={css.revisionTable}>
-                      <thead>
-                        <tr>
-                          <th>Versão</th>
-                          <th>Data</th>
-                          <th>Responsável</th>
-                          <th>Descrição</th>
-                          <th />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {revisions.map((revision, index) => (
-                          <tr key={`${revision.version}-${index}`}>
-                            <td>
-                              <input
-                                className={css.inputSmall}
-                                value={revision.version}
-                                onChange={(e) => updateRevision(index, "version", e.target.value)}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                className={css.inputSmall}
-                                value={revision.date}
-                                onChange={(e) => updateRevision(index, "date", e.target.value)}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                className={css.inputSmall}
-                                value={revision.author}
-                                onChange={(e) => updateRevision(index, "author", e.target.value)}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                className={css.inputSmall}
-                                value={revision.description}
-                                onChange={(e) =>
-                                  updateRevision(index, "description", e.target.value)
-                                }
-                              />
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className={css.revisionRemoveBtn}
-                                onClick={() => removeRevision(index)}
-                                disabled={revisions.length <= 1}
-                                title="Remover revisão"
-                              >
-                                ×
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
               </>
             )}
 
@@ -886,17 +757,26 @@ export function AreaComplementForm({
                     <DropZone
                       className={acss.batchDropzone}
                       activeClassName={acss.batchDragActive}
-                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      accept={IMAGE_ACCEPT}
                       multiple
+                      onRejectedFiles={(files) =>
+                        setBatchDropError(
+                          rejectedImageMessage(files, IMAGE_FORMATS),
+                        )
+                      }
                       onFiles={handleBatchSelect}
                     >
                       <span style={{ fontSize: "1.5rem" }}>📦</span>
-                      <strong>Clique ou arraste várias imagens</strong>
+                      <strong>Clique para selecionar ou arraste várias imagens aqui</strong>
                       <span className={css.fieldHint}>
-                        Use o nome da área no arquivo (ex.: <code>SiloBaiaNorte-0.jpg</code>).
+                        Formatos aceitos: JPEG (.jpg / .jpeg), PNG (.png), WebP (.webp), GIF (.gif) — máx. 10MB por arquivo — múltiplos arquivos simultâneos.{" "}
+                        Use o nome da área no arquivo (ex.: <code>SiloBaiaNorte-0.jpg</code>).{" "}
                         Não-matched podem ser atribuídos manualmente abaixo.
                       </span>
                     </DropZone>
+                    {batchDropError && (
+                      <span className={css.dropzoneError}>{batchDropError}</span>
+                    )}
                     {batchPreview.length > 0 && (
                       <>
                         <div className={acss.batchList}>
@@ -977,10 +857,10 @@ export function AreaComplementForm({
                         </span>
                         <span
                           className={`${acss.badge} ${areaState === "complete"
-                              ? acss.badgeOk
-                              : areaState === "empty"
-                                ? acss.badgeWarn
-                                : acss.badgeInfo
+                            ? acss.badgeOk
+                            : areaState === "empty"
+                              ? acss.badgeWarn
+                              : acss.badgeInfo
                             }`}
                           title="Dados gerais da área (descrição, notas, ventilação, fotos)"
                         >
@@ -992,8 +872,8 @@ export function AreaComplementForm({
                         </span>
                         <span
                           className={`${acss.badge} ${completeSources === area.sources.length && area.sources.length > 0
-                              ? acss.badgeOk
-                              : acss.badgeInfo
+                            ? acss.badgeOk
+                            : acss.badgeInfo
                             }`}
                           title="Fontes com Grupo/Classe T/EPL preenchidos"
                         >
@@ -1056,8 +936,17 @@ export function AreaComplementForm({
                             <DropZone
                               className={`${css.uploadBtn} ${uploadingAreas.has(area.id) ? css.uploading : ""}`}
                               activeClassName={css.uploadBtnActive}
-                              accept="image/jpeg,image/png,image/webp,image/gif"
+                              accept={IMAGE_ACCEPT}
                               disabled={uploadingAreas.has(area.id)}
+                              onRejectedFiles={(files) =>
+                                setAreaDropError({
+                                  areaId: area.id,
+                                  message: rejectedImageMessage(
+                                    files,
+                                    IMAGE_FORMATS,
+                                  ),
+                                })
+                              }
                               onFiles={(files) => {
                                 const file = files[0];
                                 if (file) void handleAreaImageUpload(area.id, file);
@@ -1066,6 +955,11 @@ export function AreaComplementForm({
                               {uploadingAreas.has(area.id) ? "…" : "+"}
                             </DropZone>
                           </div>
+                          {areaDropError?.areaId === area.id && (
+                            <span className={css.dropzoneError}>
+                              {areaDropError.message}
+                            </span>
+                          )}
                         </div>
 
                         {/* ─── Sub-acordeão por fonte (A.3) ──────── */}
@@ -1089,10 +983,10 @@ export function AreaComplementForm({
                                 </div>
                                 <span
                                   className={`${acss.badge} ${sourceState === "complete"
-                                      ? acss.badgeOk
-                                      : sourceState === "empty"
-                                        ? acss.badgeWarn
-                                        : acss.badgeInfo
+                                    ? acss.badgeOk
+                                    : sourceState === "empty"
+                                      ? acss.badgeWarn
+                                      : acss.badgeInfo
                                     }`}
                                   title="Grupo / Classe T / EPL"
                                 >
@@ -1407,8 +1301,19 @@ export function AreaComplementForm({
                   <span className={css.reviewValue}>
                     {references.filter((item) => item.title.trim() !== "").length}
                   </span>
-                  <span className={css.reviewLabel}>Revisões</span>
-                  <span className={css.reviewValue}>{revisions.length}</span>
+                </div>
+                <div
+                  className={css.staticBlock}
+                  style={{ marginTop: "var(--space-3)" }}
+                >
+                  <span className={css.staticBlockTitle}>Elaboração</span>
+                  <p className={css.staticBlockText}>
+                    Konis Ex do Brasil Ltda.
+                  </p>
+                  <p className={css.staticBlockText}>
+                    Responsável Técnico: {KONIS_RESPONSAVEL_TECNICO}
+                  </p>
+                  <p className={css.staticBlockText}>{KONIS_CREA}</p>
                 </div>
               </div>
             )}
@@ -1455,70 +1360,5 @@ function Field({
       {children}
       {error && <span className={css.errorText}>{error}</span>}
     </label>
-  );
-}
-
-function TeamTable({
-  members,
-  onUpdate,
-  onRemove,
-}: {
-  members: AreaComplementTeamMember[];
-  onUpdate: (index: number, field: keyof AreaComplementTeamMember, value: string) => void;
-  onRemove: (index: number) => void;
-}) {
-  if (members.length === 0) {
-    return <p className={css.fieldHint}>Nenhum membro cadastrado.</p>;
-  }
-  return (
-    <div className={css.revisionTableWrap}>
-      <table className={css.revisionTable}>
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Papél / Função</th>
-            <th>Registro (CREA / CFT)</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {members.map((member, index) => (
-            <tr key={`team-${index}`}>
-              <td>
-                <input
-                  className={css.inputSmall}
-                  value={member.nome}
-                  onChange={(e) => onUpdate(index, "nome", e.target.value)}
-                />
-              </td>
-              <td>
-                <input
-                  className={css.inputSmall}
-                  value={member.papel}
-                  onChange={(e) => onUpdate(index, "papel", e.target.value)}
-                />
-              </td>
-              <td>
-                <input
-                  className={css.inputSmall}
-                  value={member.registro ?? ""}
-                  onChange={(e) => onUpdate(index, "registro", e.target.value)}
-                />
-              </td>
-              <td>
-                <button
-                  type="button"
-                  className={css.revisionRemoveBtn}
-                  onClick={() => onRemove(index)}
-                  title="Remover"
-                >
-                  ×
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   );
 }

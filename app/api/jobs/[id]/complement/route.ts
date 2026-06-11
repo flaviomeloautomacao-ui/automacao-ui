@@ -40,6 +40,8 @@ interface PatchReportInput {
   observacoesGerais?: string;
   artNumero?: string;
   codigoDocumento?: string;
+  responsavel?: string;
+  registroProfissional?: string;
   // Áreas — Fase 2
   escopoComplementar?: string;
   tipoUnidade?: string;
@@ -134,6 +136,8 @@ async function updateSharedReport(
       observacoesGerais,
       artNumero,
       codigoDocumento,
+      responsavel,
+      registroProfissional,
       escopoComplementar,
       tipoUnidade,
       equipeResponsavel,
@@ -162,6 +166,8 @@ async function updateSharedReport(
         }),
         ...(artNumero !== undefined && { artNumero }),
         ...(codigoDocumento !== undefined && { codigoDocumento }),
+        ...(responsavel !== undefined && { responsavel }),
+        ...(registroProfissional !== undefined && { registroProfissional }),
         ...(escopoComplementar !== undefined && { escopoComplementar }),
         ...(tipoUnidade !== undefined && { tipoUnidade }),
         ...(equipeResponsavel !== undefined && {
@@ -379,83 +385,108 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const documentType = getJobDocumentType(job);
     const isV2 = job.documentSchemaVersion === "v2";
 
+    // Run independent row-level UPDATEs outside the transaction to avoid
+    // holding a DB connection for the full duration (85 sources × ~700ms = timeout).
+    const parallelUpdates: Promise<unknown>[] = [];
+
+    if (isV2 && documentType === "dha" && body.equipments?.length) {
+      const ops = body.equipments
+        .filter((equipment) => UUID_RE.test(equipment.id))
+        .map((equipment) =>
+          prisma.dhaReportEquipment.update({
+            where: { id: equipment.id },
+            data: {
+              ...(equipment.localInstalacao !== undefined && {
+                localInstalacao: equipment.localInstalacao,
+              }),
+              ...(equipment.funcaoOperacional !== undefined && {
+                funcaoOperacional: equipment.funcaoOperacional,
+              }),
+              ...(equipment.observacoesExtras !== undefined && {
+                observacoesExtras: equipment.observacoesExtras,
+              }),
+            },
+          }),
+        );
+      parallelUpdates.push(...ops);
+    }
+
+    if (isV2 && documentType === "areas") {
+      if (body.areas?.length) {
+        const ops = body.areas
+          .filter((area) => UUID_RE.test(area.id))
+          .map((area) =>
+            prisma.areaReportArea.update({
+              where: { id: area.id },
+              data: {
+                ...(area.description !== undefined && {
+                  description: area.description,
+                }),
+                ...(area.operationalNotes !== undefined && {
+                  operationalNotes: area.operationalNotes,
+                }),
+                ...(area.ventilationPremises !== undefined && {
+                  ventilationPremises: area.ventilationPremises,
+                }),
+              },
+            }),
+          );
+        parallelUpdates.push(...ops);
+      }
+
+      if (body.sources?.length) {
+        const ops = body.sources
+          .filter((source) => UUID_RE.test(source.id))
+          .map((source) =>
+            prisma.areaReportSource.update({
+              where: { id: source.id },
+              data: {
+                ...(source.notes !== undefined && { notes: source.notes }),
+                ...(source.epl !== undefined && { epl: source.epl }),
+                ...(source.classeTemperatura !== undefined && {
+                  classeTemperatura: source.classeTemperatura,
+                }),
+                ...(source.grupo !== undefined && { grupo: source.grupo }),
+              },
+            }),
+          );
+        parallelUpdates.push(...ops);
+      }
+    }
+
+    if (!isV2 && body.equipments?.length) {
+      const ops = body.equipments
+        .filter((equipment) => UUID_RE.test(equipment.id))
+        .map((equipment) =>
+          prisma.reportEquipment.update({
+            where: { id: equipment.id },
+            data: {
+              ...(equipment.localInstalacao !== undefined && {
+                localInstalacao: equipment.localInstalacao,
+              }),
+              ...(equipment.funcaoOperacional !== undefined && {
+                funcaoOperacional: equipment.funcaoOperacional,
+              }),
+              ...(equipment.observacoesExtras !== undefined && {
+                observacoesExtras: equipment.observacoesExtras,
+              }),
+            },
+          }),
+        );
+      parallelUpdates.push(...ops);
+    }
+
+    if (parallelUpdates.length > 0) {
+      await Promise.all(parallelUpdates);
+    }
+
+    // Use a transaction only for the operations that truly need atomicity:
+    // report/revisions update and substances/references delete+recreate.
     await prisma.$transaction(
       async (tx) => {
         await updateSharedReport(tx, report.id, body.report, body.revisions);
 
-        if (isV2 && documentType === "dha" && body.equipments?.length) {
-          const operations = body.equipments
-            .filter((equipment) => UUID_RE.test(equipment.id))
-            .map((equipment) =>
-              tx.dhaReportEquipment.update({
-                where: { id: equipment.id },
-                data: {
-                  ...(equipment.localInstalacao !== undefined && {
-                    localInstalacao: equipment.localInstalacao,
-                  }),
-                  ...(equipment.funcaoOperacional !== undefined && {
-                    funcaoOperacional: equipment.funcaoOperacional,
-                  }),
-                  ...(equipment.observacoesExtras !== undefined && {
-                    observacoesExtras: equipment.observacoesExtras,
-                  }),
-                },
-              }),
-            );
-
-          if (operations.length > 0) {
-            await Promise.all(operations);
-          }
-        }
-
         if (isV2 && documentType === "areas") {
-          if (body.areas?.length) {
-            const operations = body.areas
-              .filter((area) => UUID_RE.test(area.id))
-              .map((area) =>
-                tx.areaReportArea.update({
-                  where: { id: area.id },
-                  data: {
-                    ...(area.description !== undefined && {
-                      description: area.description,
-                    }),
-                    ...(area.operationalNotes !== undefined && {
-                      operationalNotes: area.operationalNotes,
-                    }),
-                    ...(area.ventilationPremises !== undefined && {
-                      ventilationPremises: area.ventilationPremises,
-                    }),
-                  },
-                }),
-              );
-
-            if (operations.length > 0) {
-              await Promise.all(operations);
-            }
-          }
-
-          if (body.sources?.length) {
-            const operations = body.sources
-              .filter((source) => UUID_RE.test(source.id))
-              .map((source) =>
-                tx.areaReportSource.update({
-                  where: { id: source.id },
-                  data: {
-                    ...(source.notes !== undefined && { notes: source.notes }),
-                    ...(source.epl !== undefined && { epl: source.epl }),
-                    ...(source.classeTemperatura !== undefined && {
-                      classeTemperatura: source.classeTemperatura,
-                    }),
-                    ...(source.grupo !== undefined && { grupo: source.grupo }),
-                  },
-                }),
-              );
-
-            if (operations.length > 0) {
-              await Promise.all(operations);
-            }
-          }
-
           if (body.substances) {
             await tx.areaReportSubstance.deleteMany({
               where: { reportId: report.id },
@@ -512,35 +543,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             }
           }
         }
-
-        if (!isV2 && body.equipments?.length) {
-          const operations = body.equipments
-            .filter((equipment) => UUID_RE.test(equipment.id))
-            .map((equipment) =>
-              tx.reportEquipment.update({
-                where: { id: equipment.id },
-                data: {
-                  ...(equipment.localInstalacao !== undefined && {
-                    localInstalacao: equipment.localInstalacao,
-                  }),
-                  ...(equipment.funcaoOperacional !== undefined && {
-                    funcaoOperacional: equipment.funcaoOperacional,
-                  }),
-                  ...(equipment.observacoesExtras !== undefined && {
-                    observacoesExtras: equipment.observacoesExtras,
-                  }),
-                },
-              }),
-            );
-
-          if (operations.length > 0) {
-            await Promise.all(operations);
-          }
-        }
       },
       {
         maxWait: 10000,
-        timeout: 60000,
+        timeout: 30000,
       },
     );
 

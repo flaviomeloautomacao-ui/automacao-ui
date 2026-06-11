@@ -19,17 +19,32 @@
  * (sempre array, mesmo para `multiple=false`).
  */
 
-import { useState, type DragEvent, type ReactNode } from "react";
+import {
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 
 interface DropZoneProps {
   accept?: string;
   multiple?: boolean;
   disabled?: boolean;
+  inputName?: string;
   onFiles: (files: File[]) => void;
+  onRejectedFiles?: (files: File[]) => void;
   className?: string;
   activeClassName?: string;
   children: ReactNode;
 }
+
+const MIME_EXTENSION_FALLBACKS: Record<string, string[]> = {
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/png": [".png"],
+  "image/webp": [".webp"],
+  "image/gif": [".gif"],
+};
 
 function matchesAccept(file: File, accept: string): boolean {
   const tokens = accept
@@ -41,8 +56,24 @@ function matchesAccept(file: File, accept: string): boolean {
   const type = file.type.toLowerCase();
   return tokens.some((token) => {
     if (token.startsWith(".")) return name.endsWith(token);
-    if (token.endsWith("/*")) return type.startsWith(token.slice(0, -1));
-    return type === token;
+    if (token.endsWith("/*")) {
+      const prefix = token.slice(0, -1);
+      return (
+        type.startsWith(prefix) ||
+        Object.entries(MIME_EXTENSION_FALLBACKS).some(
+          ([mimeType, extensions]) =>
+            mimeType.startsWith(prefix) &&
+            extensions.some((extension) => name.endsWith(extension)),
+        )
+      );
+    }
+    return (
+      type === token ||
+      (MIME_EXTENSION_FALLBACKS[token]?.some((extension) =>
+        name.endsWith(extension),
+      ) ??
+        false)
+    );
   });
 }
 
@@ -50,20 +81,60 @@ export function DropZone({
   accept,
   multiple = false,
   disabled = false,
+  inputName,
   onFiles,
+  onRejectedFiles,
   className,
   activeClassName,
   children,
 }: DropZoneProps) {
   const [dragActive, setDragActive] = useState(false);
+  const dragDepth = useRef(0);
 
-  const handleDrag = (e: DragEvent<HTMLLabelElement>) => {
+  const resetDrag = () => {
+    dragDepth.current = 0;
+    setDragActive(false);
+  };
+
+  const emitFiles = (files: File[]) => {
+    if (files.length === 0) return;
+
+    const accepted = accept
+      ? files.filter((file) => matchesAccept(file, accept))
+      : files;
+    const rejected = accept
+      ? files.filter((file) => !matchesAccept(file, accept))
+      : [];
+
+    if (accepted.length > 0) {
+      onFiles(multiple ? accepted : [accepted[0]]);
+    }
+
+    if (rejected.length > 0) {
+      onRejectedFiles?.(rejected);
+    }
+  };
+
+  const handleDragEnter = (e: DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (disabled) return;
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
+    dragDepth.current += 1;
+    setDragActive(true);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = disabled ? "none" : "copy";
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (disabled) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) {
       setDragActive(false);
     }
   };
@@ -71,13 +142,16 @@ export function DropZone({
   const handleDrop = (e: DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    setDragActive(false);
+    resetDrag();
     if (disabled) return;
     const dropped = Array.from(e.dataTransfer.files ?? []);
-    if (dropped.length === 0) return;
-    const accepted = accept ? dropped.filter((f) => matchesAccept(f, accept)) : dropped;
-    if (accepted.length === 0) return;
-    onFiles(multiple ? accepted : [accepted[0]]);
+    emitFiles(dropped);
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? []);
+    emitFiles(picked);
+    e.target.value = "";
   };
 
   const composedClassName = [className, dragActive && activeClassName]
@@ -87,24 +161,21 @@ export function DropZone({
   return (
     <label
       className={composedClassName}
-      onDragEnter={handleDrag}
-      onDragOver={handleDrag}
-      onDragLeave={handleDrag}
+      aria-disabled={disabled}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {children}
       <input
+        name={inputName}
         type="file"
         accept={accept}
         multiple={multiple}
         disabled={disabled}
         hidden
-        onChange={(e) => {
-          const picked = Array.from(e.target.files ?? []);
-          if (picked.length === 0) return;
-          onFiles(multiple ? picked : [picked[0]]);
-          e.target.value = "";
-        }}
+        onChange={handleChange}
       />
     </label>
   );

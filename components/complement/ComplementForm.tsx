@@ -125,6 +125,20 @@ const STEP_LABELS = [
 /* ================================================================== */
 
 const DEFAULT_AUTHOR = "Eng. Francisco Flávio Melo Cavalcante";
+const KONIS_RESPONSAVEL_TECNICO = "Francisco Flávio Melo Cavalcante";
+const KONIS_CREA = "CREA SP – 5060562076";
+const COVER_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp";
+const IMAGE_ACCEPT = `${COVER_IMAGE_ACCEPT},image/gif`;
+const COVER_IMAGE_FORMATS = "JPEG, PNG ou WebP";
+const IMAGE_FORMATS = "JPEG, PNG, WebP ou GIF";
+
+function rejectedImageMessage(files: File[], formats: string): string {
+  const prefix =
+    files.length === 1
+      ? `Arquivo recusado: ${files[0].name}.`
+      : `${files.length} arquivos recusados.`;
+  return `${prefix} Use ${formats}.`;
+}
 
 function formatDateBR(d: Date = new Date()): string {
   return d.toLocaleDateString("pt-BR");
@@ -151,6 +165,7 @@ export function ComplementForm({
     report.coverImageUrl ?? null,
   );
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [coverDropError, setCoverDropError] = useState<string | null>(null);
 
   // ── Revisions state (Feature 2) ────────────────────────
   const [revisions, setRevisions] = useState<ComplementRevision[]>(
@@ -186,6 +201,10 @@ export function ComplementForm({
   // Batch upload state (step 1)
   const [batchResults, setBatchResults] = useState<ImageMatchResult[]>([]);
   const [batchUploading, setBatchUploading] = useState(false);
+  const [batchDropError, setBatchDropError] = useState<string | null>(null);
+  const [equipmentDropError, setEquipmentDropError] = useState<string | null>(
+    null,
+  );
   const [batchProgress, setBatchProgress] = useState<{
     current: number;
     total: number;
@@ -229,6 +248,7 @@ export function ComplementForm({
 
   // ── Cover image handlers ──────────────────────────────
   async function handleCoverUpload(file: File) {
+    setCoverDropError(null);
     setUploadingCover(true);
     try {
       const form = new FormData();
@@ -313,6 +333,8 @@ export function ComplementForm({
             dataAvaliacao: values.report.dataAvaliacao || undefined,
             artNumero,
             codigoDocumento,
+            responsavel: KONIS_RESPONSAVEL_TECNICO,
+            registroProfissional: KONIS_CREA,
           },
           revisions,
         }),
@@ -475,6 +497,7 @@ export function ComplementForm({
   const [uploadingEqs, setUploadingEqs] = useState<Set<string>>(new Set());
 
   async function handleImageUpload(equipmentId: string, file: File) {
+    setEquipmentDropError(null);
     uploadingRef.current.add(equipmentId);
     setUploadingEqs(new Set(uploadingRef.current));
 
@@ -542,6 +565,7 @@ export function ComplementForm({
 
   // ── Batch image upload (step 1) ─────────────────────────
   function handleBatchFilesSelected(files: File[]) {
+    setBatchDropError(null);
     if (files.length === 0) {
       setBatchResults([]);
       return;
@@ -738,7 +762,7 @@ export function ComplementForm({
                 {/* ─── Imagem de Capa (Feature 1) ────────────── */}
                 <div className={css.coverSection}>
                   <span className={css.label}>Imagem de Capa (opcional)</span>
-                  {coverImageUrl ? (
+                  {coverImageUrl && (
                     <div className={css.coverPreview}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -754,27 +778,36 @@ export function ComplementForm({
                         ✕ Remover
                       </button>
                     </div>
-                  ) : (
-                    <DropZone
-                      className={`${css.dropzone} ${css.coverDropzone} ${uploadingCover ? css.uploading : ""}`}
-                      activeClassName={css.dragActive}
-                      accept="image/jpeg,image/png,image/webp"
-                      disabled={uploadingCover}
-                      onFiles={(files) => {
-                        const file = files[0];
-                        if (file) handleCoverUpload(file);
-                      }}
-                    >
-                      <span className={css.dropzoneIcon}>🖼️</span>
-                      <span className={css.dropzoneText}>
-                        {uploadingCover
-                          ? "Enviando…"
+                  )}
+                  <DropZone
+                    className={`${css.dropzone} ${css.coverDropzone} ${uploadingCover ? css.uploading : ""}`}
+                    activeClassName={css.dragActive}
+                    accept={COVER_IMAGE_ACCEPT}
+                    disabled={uploadingCover}
+                    onRejectedFiles={(files) =>
+                      setCoverDropError(
+                        rejectedImageMessage(files, COVER_IMAGE_FORMATS),
+                      )
+                    }
+                    onFiles={(files) => {
+                      const file = files[0];
+                      if (file) handleCoverUpload(file);
+                    }}
+                  >
+                    <span className={css.dropzoneIcon}>🖼️</span>
+                    <span className={css.dropzoneText}>
+                      {uploadingCover
+                        ? "Enviando…"
+                        : coverImageUrl
+                          ? "Clique ou arraste para substituir a imagem de capa"
                           : "Clique ou arraste a imagem de capa"}
-                      </span>
-                      <span className={css.dropzoneHint}>
-                        JPEG, PNG, WebP — máx. 10MB
-                      </span>
-                    </DropZone>
+                    </span>
+                    <span className={css.dropzoneHint}>
+                      JPEG, PNG, WebP — máx. 10MB
+                    </span>
+                  </DropZone>
+                  {coverDropError && (
+                    <span className={css.dropzoneError}>{coverDropError}</span>
                   )}
                 </div>
 
@@ -812,7 +845,7 @@ export function ComplementForm({
                   */}
                 </div>
 
-                <div className={css.revisionSection}>
+                {/* <div className={css.revisionSection}>
                   <div className={css.revisionHeader}>
                     <span className={css.label}>Controle de Revisão</span>
                     <Button
@@ -894,7 +927,7 @@ export function ComplementForm({
                       </tbody>
                     </table>
                   </div>
-                </div>
+                </div> */}
 
                 {/* ─── Tabela de Revisões (Feature 2) — oculta por enquanto, revisão será preenchida após gerar PDF
                 <div className={css.revisionSection}>
@@ -1017,18 +1050,26 @@ export function ComplementForm({
                 <DropZone
                   className={css.dropzone}
                   activeClassName={css.dragActive}
-                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  accept={IMAGE_ACCEPT}
                   multiple
+                  onRejectedFiles={(files) =>
+                    setBatchDropError(
+                      rejectedImageMessage(files, IMAGE_FORMATS),
+                    )
+                  }
                   onFiles={handleBatchFilesSelected}
                 >
                   <span className={css.dropzoneIcon}>📁</span>
                   <span className={css.dropzoneText}>
-                    Clique ou arraste imagens para vincular
+                    Clique para selecionar ou arraste imagens aqui
                   </span>
                   <span className={css.dropzoneHint}>
-                    JPEG, PNG, WebP — máx. 10MB cada
+                    Formatos aceitos: JPEG (.jpg / .jpeg), PNG (.png), WebP (.webp), GIF (.gif) — máx. 10MB por arquivo — múltiplos arquivos simultâneos
                   </span>
                 </DropZone>
+                {batchDropError && (
+                  <span className={css.dropzoneError}>{batchDropError}</span>
+                )}
 
                 {/* Match results */}
                 {batchResults.length > 0 && (
@@ -1219,8 +1260,13 @@ export function ComplementForm({
                         <DropZone
                           className={`${css.uploadBtn} ${isUploading ? css.uploading : ""}`}
                           activeClassName={css.uploadBtnActive}
-                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          accept={IMAGE_ACCEPT}
                           disabled={isUploading}
+                          onRejectedFiles={(files) =>
+                            setEquipmentDropError(
+                              rejectedImageMessage(files, IMAGE_FORMATS),
+                            )
+                          }
                           onFiles={(files) => {
                             const file = files[0];
                             if (file) handleImageUpload(dbId, file);
@@ -1229,6 +1275,11 @@ export function ComplementForm({
                           {isUploading ? "…" : "+"}
                         </DropZone>
                       </div>
+                      {equipmentDropError && (
+                        <span className={css.dropzoneError}>
+                          {equipmentDropError}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </CardBody>
