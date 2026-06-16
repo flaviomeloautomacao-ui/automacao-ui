@@ -374,6 +374,7 @@ async function persistAreaData(tx: {
         classeTemperatura: substance.classeTemperatura,
         epl: substance.epl,
         tipo: substance.tipo,
+        legendNotes: [],
       })),
     });
   }
