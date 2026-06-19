@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/Card";
 import { DropZone } from "@/components/ui/DropZone";
 import type { ApiResponse } from "@/lib/types";
+import { prepareImageForUpload } from "@/lib/prepareImageForUpload";
 
 import css from "./ComplementForm.module.css";
 import acss from "./AreaComplementForm.module.css";
@@ -127,10 +128,14 @@ interface Props {
   references: AreaComplementReference[];
 }
 
-const COVER_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp";
+// HEIC/HEIF (fotos de iPhone) são aceitos na seleção e convertidos para JPEG
+// no navegador antes do upload (ver prepareImageForUpload). O file.type de HEIC
+// costuma vir vazio, por isso incluímos as extensões além dos MIME types.
+const COVER_IMAGE_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif";
 const IMAGE_ACCEPT = `${COVER_IMAGE_ACCEPT},image/gif`;
-const COVER_IMAGE_FORMATS = "JPEG, PNG ou WebP";
-const IMAGE_FORMATS = "JPEG, PNG, WebP ou GIF";
+const COVER_IMAGE_FORMATS = "JPEG, PNG, WebP ou HEIC";
+const IMAGE_FORMATS = "JPEG, PNG, WebP, GIF ou HEIC";
 const KONIS_RESPONSAVEL_TECNICO = "Francisco Flávio Melo Cavalcante";
 const KONIS_CREA = "CREA SP – 5060562076";
 
@@ -418,8 +423,9 @@ export function AreaComplementForm({
     setCoverDropError(null);
     setUploadingCover(true);
     try {
+      const ready = await prepareImageForUpload(file);
       const form = new FormData();
-      form.append("file", file);
+      form.append("file", ready);
       const res = await fetch(`/api/jobs/${jobId}/cover-image`, { method: "POST", body: form });
       const json: ApiResponse<{ coverImageUrl: string }> = await res.json();
       if (json.error) {
@@ -427,8 +433,12 @@ export function AreaComplementForm({
         return;
       }
       setCoverImageUrl(json.data.coverImageUrl);
-    } catch {
-      setApiError("Falha ao fazer upload da imagem de capa.");
+    } catch (err) {
+      setCoverDropError(
+        err instanceof Error
+          ? err.message
+          : "Falha ao fazer upload da imagem de capa.",
+      );
     } finally {
       setUploadingCover(false);
     }
@@ -506,8 +516,9 @@ export function AreaComplementForm({
     uploadingAreaRef.current.add(areaId);
     setUploadingAreas(new Set(uploadingAreaRef.current));
     try {
+      const ready = await prepareImageForUpload(file);
       const form = new FormData();
-      form.append("file", file);
+      form.append("file", ready);
       form.append("areaId", areaId);
       const res = await fetch("/api/images/upload", { method: "POST", body: form });
       const json: ApiResponse<AreaComplementImage> = await res.json();
@@ -520,8 +531,14 @@ export function AreaComplementForm({
         ...prev,
         [areaId]: [...(prev[areaId] ?? []), newImage],
       }));
-    } catch {
-      setApiError("Falha ao fazer upload da imagem da área.");
+    } catch (err) {
+      setAreaDropError({
+        areaId,
+        message:
+          err instanceof Error
+            ? err.message
+            : "Falha ao fazer upload da imagem da área.",
+      });
     } finally {
       uploadingAreaRef.current.delete(areaId);
       setUploadingAreas(new Set(uploadingAreaRef.current));

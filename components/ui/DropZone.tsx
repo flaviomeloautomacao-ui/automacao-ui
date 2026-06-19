@@ -44,6 +44,10 @@ const MIME_EXTENSION_FALLBACKS: Record<string, string[]> = {
   "image/png": [".png"],
   "image/webp": [".webp"],
   "image/gif": [".gif"],
+  // HEIC/HEIF: o navegador frequentemente reporta file.type vazio, então o
+  // casamento por extensão é essencial.
+  "image/heic": [".heic"],
+  "image/heif": [".heif"],
 };
 
 function matchesAccept(file: File, accept: string): boolean {

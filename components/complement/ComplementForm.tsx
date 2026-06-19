@@ -14,6 +14,7 @@ import {
   matchImagesToEquipments,
   type ImageMatchResult,
 } from "@/lib/normalizeEquipmentName";
+import { prepareImageForUpload } from "@/lib/prepareImageForUpload";
 
 import css from "./ComplementForm.module.css";
 
@@ -127,10 +128,14 @@ const STEP_LABELS = [
 const DEFAULT_AUTHOR = "Eng. Francisco Flávio Melo Cavalcante";
 const KONIS_RESPONSAVEL_TECNICO = "Francisco Flávio Melo Cavalcante";
 const KONIS_CREA = "CREA SP – 5060562076";
-const COVER_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp";
+// HEIC/HEIF (fotos de iPhone) são aceitos na seleção e convertidos para JPEG
+// no navegador antes do upload (ver prepareImageForUpload). O file.type de HEIC
+// costuma vir vazio, por isso incluímos as extensões além dos MIME types.
+const COVER_IMAGE_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif";
 const IMAGE_ACCEPT = `${COVER_IMAGE_ACCEPT},image/gif`;
-const COVER_IMAGE_FORMATS = "JPEG, PNG ou WebP";
-const IMAGE_FORMATS = "JPEG, PNG, WebP ou GIF";
+const COVER_IMAGE_FORMATS = "JPEG, PNG, WebP ou HEIC";
+const IMAGE_FORMATS = "JPEG, PNG, WebP, GIF ou HEIC";
 
 function rejectedImageMessage(files: File[], formats: string): string {
   const prefix =
@@ -251,8 +256,9 @@ export function ComplementForm({
     setCoverDropError(null);
     setUploadingCover(true);
     try {
+      const ready = await prepareImageForUpload(file);
       const form = new FormData();
-      form.append("file", file);
+      form.append("file", ready);
       const res = await fetch(`/api/jobs/${jobId}/cover-image`, {
         method: "POST",
         body: form,
@@ -266,8 +272,12 @@ export function ComplementForm({
         return;
       }
       setCoverImageUrl(json.data!.coverImageUrl);
-    } catch {
-      alert("Falha ao fazer upload da imagem de capa.");
+    } catch (err) {
+      setCoverDropError(
+        err instanceof Error
+          ? err.message
+          : "Falha ao fazer upload da imagem de capa.",
+      );
     } finally {
       setUploadingCover(false);
     }
@@ -502,8 +512,9 @@ export function ComplementForm({
     setUploadingEqs(new Set(uploadingRef.current));
 
     try {
+      const ready = await prepareImageForUpload(file);
       const form = new FormData();
-      form.append("file", file);
+      form.append("file", ready);
       form.append("equipmentId", equipmentId);
 
       const res = await fetch("/api/images/upload", {
@@ -536,8 +547,10 @@ export function ComplementForm({
         ...prev,
         [equipmentId]: [...(prev[equipmentId] ?? []), newImage],
       }));
-    } catch {
-      alert("Falha ao fazer upload da imagem.");
+    } catch (err) {
+      setEquipmentDropError(
+        err instanceof Error ? err.message : "Falha ao fazer upload da imagem.",
+      );
     } finally {
       uploadingRef.current.delete(equipmentId);
       setUploadingEqs(new Set(uploadingRef.current));
@@ -584,15 +597,19 @@ export function ComplementForm({
     if (matched.length === 0) return;
 
     setBatchUploading(true);
+    setBatchDropError(null);
     setBatchProgress({ current: 0, total: matched.length });
+
+    const failedNames: string[] = [];
 
     for (let i = 0; i < matched.length; i++) {
       const item = matched[i];
       setBatchProgress({ current: i + 1, total: matched.length });
 
       try {
+        const ready = await prepareImageForUpload(item.file);
         const form = new FormData();
-        form.append("file", item.file);
+        form.append("file", ready);
         form.append("equipmentId", item.equipmentId!);
 
         const res = await fetch("/api/images/upload", {
@@ -623,15 +640,23 @@ export function ComplementForm({
               newImage,
             ],
           }));
+        } else if (json.error) {
+          failedNames.push(item.file.name);
         }
       } catch {
         // Continue uploading remaining images on error
+        failedNames.push(item.file.name);
       }
     }
 
     setBatchUploading(false);
     setBatchProgress(null);
     setBatchResults((prev) => prev.filter((r) => !r.matched));
+    if (failedNames.length > 0) {
+      setBatchDropError(
+        `Falha ao enviar ${failedNames.length} imagem(ns): ${failedNames.join(", ")}.`,
+      );
+    }
 
     // Auto-advance to next step after batch upload completes
     goNext();
@@ -803,7 +828,7 @@ export function ComplementForm({
                           : "Clique ou arraste a imagem de capa"}
                     </span>
                     <span className={css.dropzoneHint}>
-                      JPEG, PNG, WebP — máx. 10MB
+                      JPEG, PNG, WebP ou HEIC — fotos grandes são otimizadas automaticamente
                     </span>
                   </DropZone>
                   {coverDropError && (
@@ -1064,7 +1089,7 @@ export function ComplementForm({
                     Clique para selecionar ou arraste imagens aqui
                   </span>
                   <span className={css.dropzoneHint}>
-                    Formatos aceitos: JPEG (.jpg / .jpeg), PNG (.png), WebP (.webp), GIF (.gif) — máx. 10MB por arquivo — múltiplos arquivos simultâneos
+                    Formatos aceitos: JPEG, PNG, WebP, GIF e HEIC (iPhone) — fotos grandes são otimizadas automaticamente no envio — múltiplos arquivos simultâneos
                   </span>
                 </DropZone>
                 {batchDropError && (
